@@ -22,9 +22,12 @@ const isDev = process.env.NODE_ENV === "dev";
 
 const build = isDev
   ? {
-    //   watch: {},
+      //   watch: {},
+      minify: false,
     }
-  : {};
+  : {
+      minify: true,
+    };
 
 const fileName = {
   es: `extension.js`,
@@ -70,7 +73,6 @@ export default defineConfig({
       fileName: (format) => fileName[format],
     },
     outDir: "./",
-    minify: true,
     rollupOptions: {
       output: {
         assetFileNames: "extension.[ext]",

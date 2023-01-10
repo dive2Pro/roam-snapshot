@@ -11,14 +11,14 @@ type RoamExtensionAPI = {
 
 type SnapshotBlock = {
   open: boolean;
-  order: string;
+  order: number;
   parents: { id: number }[];
   string: string;
   time: number;
   uid: string;
-  "text-align": string;
+  "text-align": "center" | "left" | "right";
   heading: number;
-  "view-type": string;
+  "view-type": "bullet" | "numbered" | "document";
   children: SnapshotBlock[];
 };
 

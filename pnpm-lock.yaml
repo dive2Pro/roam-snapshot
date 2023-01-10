@@ -24,6 +24,7 @@ specifiers:
   eslint-plugin-react: 7.31.11
   eslint-plugin-react-hooks: 4.6.0
   less: ^4.1.3
+  marked-react: ^1.1.2
   postcss: 8.4.20
   roamjs-components: ^0.72.9
   semantic-release: 19.0.5
@@ -59,8 +60,9 @@ devDependencies:
   eslint-plugin-react: 7.31.11_eslint@8.31.0
   eslint-plugin-react-hooks: 4.6.0_eslint@8.31.0
   less: 4.1.3
+  marked-react: 1.3.2
   postcss: 8.4.20
-  roamjs-components: 0.72.11_5466b66fc7e84f1c84a3e8a59d85bda0
+  roamjs-components: 0.72.11_297927eca1167c05781b8bbad15e86af
   semantic-release: 19.0.5
   typescript: 4.9.4
   vite: 4.0.3_@types+node@18.11.18+less@4.1.3
@@ -947,6 +949,10 @@ packages:
 
   /@types/json-schema/7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
+    dev: true
+
+  /@types/marked/4.0.8:
+    resolution: {integrity: sha512-HVNzMT5QlWCOdeuBsgXP8EZzKUf0+AXzN+sLmjvaB3ZlLqO+e4u0uXrdw9ub69wBKFs+c6/pA4r9sy6cCDvImw==}
     dev: true
 
   /@types/minimist/1.2.2:
@@ -3095,6 +3101,15 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /marked-react/1.3.2:
+    resolution: {integrity: sha512-ZJtBH6G1K6mHt/BhtZ/XQzcTyPvJRQdAWQKgYPgE38gvvwsyTg20OhVMHrQtqoM3Qr3IwzjbxO4+DD+YrrvHhA==}
+    peerDependencies:
+      react: ^16.8.0 || >=17.0.0
+    dependencies:
+      '@types/marked': 4.0.8
+      marked: 4.2.5
+    dev: true
+
   /marked-terminal/5.1.1_marked@4.2.5:
     resolution: {integrity: sha512-+cKTOx9P4l7HwINYhzbrBSyzgxO2HaHKGZGuB1orZsMIgXYaJyfidT81VXRdpelW/PcHEWxywscePVgI/oUF6g==}
     engines: {node: '>=14.13.1 || >=16.0.0'}
@@ -3976,7 +3991,7 @@ packages:
       glob: 7.2.3
     dev: true
 
-  /roamjs-components/0.72.11_5466b66fc7e84f1c84a3e8a59d85bda0:
+  /roamjs-components/0.72.11_297927eca1167c05781b8bbad15e86af:
     resolution: {integrity: sha512-sqrEBIazAsYacFUU5EcKMgiazYm7lSpb7m2fFJrMsLwIzr8oW/qfhPezDufY6yP3dI71RsG27mWT5GrMtIcQIw==}
     engines: {node: '>=16.0.0', npm: '>=7.0.0'}
     peerDependencies:
@@ -4010,6 +4025,7 @@ packages:
       date-fns: 2.29.3
       fuzzy: 0.1.3
       hast-util-to-html: 7.1.3
+      marked-react: 1.3.2
       refractor: 3.6.0
       xregexp: 5.1.1
     dev: true

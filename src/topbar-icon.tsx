@@ -26,7 +26,7 @@ function TopbarIcon() {
         isOpen={open}
         style={{ width: "unset" }}
       >
-        <Extension />
+        <Extension onChange={setOpen} />
       </Dialog>
     </>
   );

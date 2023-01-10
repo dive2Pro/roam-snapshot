@@ -13,6 +13,7 @@
     "dayjs": "^1.11.7"
   },
   "devDependencies": {
+    "marked-react": "^1.1.2",
     "@blueprintjs/core": "3.54.0",
     "@blueprintjs/select": "3.19.1",
     "@rollup/plugin-terser": "^0.2.1",
