@@ -56,7 +56,6 @@ const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
 
 const sortByOrder = (a: SnapshotBlock, b: SnapshotBlock) => a.order - b.order;
 const hasDifference = (a: Snapshot, b: Snapshot) => {
-  // TODO:
   if (a.title !== b.title) {
     return true;
   }

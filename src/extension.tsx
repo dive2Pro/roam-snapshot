@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { getPageSnapshot, savePageSnapshot } from "./config";
 import { extension_helper } from "./helper";
 import Dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-Dayjs.extend(relativeTime);
+import calendar from "dayjs/plugin/calendar";
+Dayjs.extend(calendar);
 import "./style.less";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
@@ -115,8 +115,10 @@ function PagePreview(props: { json?: Snapshot }) {
       {!props.json ? (
         <div className="rm-snapshot-view-empty">
           <Icon icon="outdated" size={30}></Icon>
-          This page does not have any snapshots yet. Allow up to 10 minutes for
-          the first snapshot to be generated.
+          <div style={{ maxWidth: 340 }}>
+            This page does not have any snapshots yet. Allow up to 10 minutes
+            for the first snapshot to be generated.
+          </div>
         </div>
       ) : (
         <div className="rm-article-wrapper rm-spacing--small">
@@ -145,11 +147,11 @@ function PagePreview(props: { json?: Snapshot }) {
   );
 }
 const timeFormat = (time: number) => {
-  const fiveDaysInner = Dayjs(Date.now()).startOf("day").subtract(5, "day");
-  if (time >= fiveDaysInner.valueOf()) {
-    return Dayjs(time).fromNow();
-  }
-  return Dayjs(time).format(`YYYY/MM/DD HH:mm`);
+  return Dayjs(time).calendar(null, {
+    sameDay: "[Today at] h:mm A", // The same day ( Today at 2:30 AM )
+    lastDay: "[Yesterday at] h:mm A", // The day before ( Yesterday at 2:30 AM )
+    sameElse: "YYYY/MM/DD HH:mm", // Everything else ( 17/10/2011 )
+  });
 };
 
 const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -333,8 +335,7 @@ const startLoop = () => {
  * Snapshots will be created every ten minutes.
  * Over the course of thirty minutes, you should expect to see three different versions in the page history.
  */
-const triggerSnapshotRecordByPageTitle = (pageTitle: string) => {
-  const uid = getPageUidByPageTitle(pageTitle);
+const triggerSnapshotRecordByPageUid = (uid: string) => {
   SNAP_SHOT_MAP.set(uid, {
     start: Date.now(),
     end: Date.now() + minute_10,
@@ -342,21 +343,32 @@ const triggerSnapshotRecordByPageTitle = (pageTitle: string) => {
   });
 };
 
-const getPageTitleFromDom = (el: HTMLElement) => {
+const getPageUidFromDom = async (el: HTMLElement) => {
   const targetEl = el.closest("[data-page-title]");
-  return targetEl?.getAttribute("data-page-title");
+  const titleFromBlock = targetEl?.getAttribute("data-page-title");
+  if (titleFromBlock) {
+    const uid = getPageUidByPageTitle(titleFromBlock);
+    return uid;
+  }
+  if (el.className === "rm-title-display") {
+    return await getCurrentPageFromApi();
+  }
 };
+const mutationTrigger = async (mutation: MutationRecord) => {
+  const uid = await getPageUidFromDom(mutation.target as HTMLElement);
+  // console.log(mutation.target, " --- ", uid);
+  if (uid) {
+    triggerSnapshotRecordByPageUid(uid);
+  }
+};
+
 function listenToChange() {
   const targetNode = document.getElementById("app");
   const config = { childList: true, subtree: true };
   const observer = new MutationObserver((mutationList, observer) => {
     for (const mutation of mutationList) {
       if (mutation.type === "childList" && !isRestoring) {
-        const pageTitle = getPageTitleFromDom(mutation.target as HTMLElement);
-        if (pageTitle) {
-          console.log(mutation.target, " --- ", pageTitle);
-          triggerSnapshotRecordByPageTitle(pageTitle);
-        }
+        mutationTrigger(mutation);
       }
     }
   });
