@@ -4,7 +4,7 @@ import ReactDom from "react-dom";
 import Extension from "./extension";
 import "arrive";
 
-import { appendToTopbar, extension_helper } from "./helper";
+import { extension_helper } from "./helper";
 
 function TopbarIcon() {
   const [open, setOpen] = useState(false);
@@ -24,7 +24,7 @@ function TopbarIcon() {
       <Dialog
         onClose={() => setOpen((prev) => !prev)}
         isOpen={open}
-        style={{ width: "unset" }}
+        style={{ width: "unset", paddingBottom: 0 }}
       >
         <Extension onChange={setOpen} />
       </Dialog>

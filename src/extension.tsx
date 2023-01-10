@@ -1,4 +1,4 @@
-import { Button, Menu, MenuItem } from "@blueprintjs/core";
+import { Button, ButtonGroup, Menu, MenuItem, Icon } from "@blueprintjs/core";
 import React, { useEffect, useRef, useState } from "react";
 import { getPageSnapshot, savePageSnapshot } from "./config";
 import { extension_helper } from "./helper";
@@ -7,19 +7,21 @@ import relativeTime from "dayjs/plugin/relativeTime";
 Dayjs.extend(relativeTime);
 import "./style.less";
 
+const getPageUidByPageTitle = (pageTitle: string) =>
+  window.roamAlphaAPI.q(
+    `[:find ?e . :where [?page :node/title "${pageTitle}"] [?page :block/uid ?e]]`
+  ) as unknown as string;
+
 const getCurrentPageFromApi = async () => {
   const uid = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
   const pageTitle = window.roamAlphaAPI.q(
-    `[:find ?e . :where [?b :block/uid "${uid}"] [?b :block/page ?p] [?p :node/title ?e]]`
+    `[:find ?e . :where [?b :block/uid "${uid}"] [?b :block/page ?p] [?p :block/uid ?e]]`
   );
 
   if (pageTitle) {
     return pageTitle as unknown as string;
   }
-
-  return window.roamAlphaAPI.q(
-    `[:find ?e . :where [?b :block/uid "${uid}"]  [?b :node/title ?e]]`
-  ) as unknown as string;
+  return uid;
 };
 
 function Block(props: {
@@ -90,6 +92,7 @@ function Block(props: {
       <div
         className={`rm-block-children rm-block__children rm-level-${props.level}`}
       >
+        <div className="rm-multibar"></div>
         {props.data.children && props.data.open
           ? props.data.children
               .sort((a, b) => a.order - b.order)
@@ -106,29 +109,38 @@ function Block(props: {
   );
 }
 
-function PagePreview(props: { json: Snapshot }) {
+function PagePreview(props: { json?: Snapshot }) {
   return (
     <div className="rm-snapshot-view">
-      <div className="rm-article-wrapper rm-spacing--small">
-        <div className="roam-article">
-          <div>
+      {!props.json ? (
+        <div className="rm-snapshot-view-empty">
+          <Icon icon="outdated" size={30}></Icon>
+          This page does not have any snapshots yet. Allow up to 10 minutes for
+          the first snapshot to be generated.
+        </div>
+      ) : (
+        <div className="rm-article-wrapper rm-spacing--small">
+          <div className="roam-article">
             <div>
-              <div className="rm-snapshot-view-title">
-                <h1 className="rm-title-display">
-                  <span>{props.json.title}</span>
-                </h1>
-              </div>
-              <div className="rm-block-children rm-block__children rm-level-0">
-                {props.json.children
-                  .sort((a, b) => a.order - b.order)
-                  .map((child) => {
-                    return <Block data={child} level={1} />;
-                  })}
+              <div>
+                <div className="rm-snapshot-view-title">
+                  <h1 className="rm-title-display">
+                    <span>{props.json?.title}</span>
+                  </h1>
+                </div>
+                <div className="rm-block-children rm-block__children rm-level-0">
+                  <div className="rm-multibar"></div>
+                  {props.json?.children
+                    .sort((a, b) => a.order - b.order)
+                    .map((child) => {
+                      return <Block data={child} level={1} />;
+                    })}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -146,26 +158,27 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [index, setIndex] = useState(0);
   const [list, setList] = useState<{ json: Snapshot; time: number }[]>([]);
   const [restoring, setRestoring] = useState(false);
-  let pageTitleRef = useRef("");
+  let pageUidRef = useRef("");
   useEffect(() => {
     const mount = async () => {
-      const pageTitle = await getCurrentPageFromApi();
-      pageTitleRef.current = pageTitle;
-      setList(getPageSnapshot(pageTitle).sort((a, b) => b.time - a.time));
+      const pageUid = await getCurrentPageFromApi();
+      pageUidRef.current = pageUid;
+      setList(getPageSnapshot(pageUid).sort((a, b) => b.time - a.time));
     };
     mount();
   }, []);
   const restore = async (json: Snapshot) => {
     setRestoring(true);
     await delay();
-    restorePage(pageTitleRef.current, json);
+    restorePage(pageUidRef.current, json);
     setRestoring(false);
+    await delay();
     props.onChange(false);
   };
   console.log(list, " = list");
   return (
     <div className="rm-snapshot">
-      {list[index] ? <PagePreview json={list[index].json} /> : null}
+      <PagePreview json={list[index]?.json} />
       <div className="rm-snapshot-list">
         <Menu className="rm-snapshot-list-view">
           {list.map((item, i) => {
@@ -184,20 +197,23 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
           })}
         </Menu>
         <div className="rm-snapshot-list-footer">
-          <Button
-            text="Restore version"
-            intent="primary"
-            loading={restoring}
-            onClick={() => {
-              restore(list[index].json);
-            }}
-          />
-          <Button
-            text="Cancel"
-            onClick={() => {
-              props.onChange(false);
-            }}
-          />
+          <ButtonGroup fill>
+            <Button
+              disabled={!list[index]}
+              text="Restore version"
+              intent="primary"
+              loading={restoring}
+              onClick={() => {
+                restore(list[index].json);
+              }}
+            />
+            <Button
+              text="Cancel"
+              onClick={() => {
+                props.onChange(false);
+              }}
+            />
+          </ButtonGroup>
         </div>
       </div>
     </div>
@@ -206,7 +222,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
 type Info = {
   start: number;
   end: number;
-  name: string;
+  uid: string;
 };
 const SNAP_SHOT_MAP = new Map<string, Info>();
 
@@ -215,7 +231,7 @@ const isExceed = (time: number) => {
   return now >= time;
 };
 
-const getFullPageJson = (pageTitle: string) => {
+const getFullPageJson = (uid: string) => {
   return window.roamAlphaAPI.data.q(
     `[:find (pull ?b [
       :block/string 
@@ -230,23 +246,21 @@ const getFullPageJson = (pageTitle: string) => {
       :block/props
       :block/parents
       {:block/children ...}
-    ]) . :where [?b :node/title "${pageTitle}"]]`
+    ]) . :where [?b :block/uid "${uid}"]]`
   ) as unknown as Snapshot;
 };
 
 const recordPage = (item: Info) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
-  SNAP_SHOT_MAP.delete(item.name);
-  //
-  const json = getFullPageJson(item.name);
-  savePageSnapshot(item.name, json);
+  SNAP_SHOT_MAP.delete(item.uid);
+  const json = getFullPageJson(item.uid);
+  savePageSnapshot(item.uid, json);
 };
 
-// 不能这样搞. 删除后, 新建的 block 会丢失原有的 reference
-const cleanPage = (pageTitle: string) => {
+const cleanPage = (pageUid: string) => {
   const firstLevelUids = (
     window.roamAlphaAPI.q(
-      `[:find [(pull ?e [:block/uid]) ...] :where [?page :node/title "${pageTitle}"] [?page :block/children ?e]]`
+      `[:find [(pull ?e [:block/uid]) ...] :where [?page :block/uid "${pageUid}"] [?page :block/children ?e]]`
     ) as unknown as { uid: string }[]
   )?.map((item) => item.uid);
   if (firstLevelUids) {
@@ -259,10 +273,10 @@ const cleanPage = (pageTitle: string) => {
     });
   }
 };
-const restorePageByJson = async (pageTitle: string, json: Snapshot) => {
-  await window.roamAlphaAPI.createPage({
+const restorePageByJson = async (json: Snapshot) => {
+  await window.roamAlphaAPI.updatePage({
     page: {
-      title: pageTitle,
+      title: json.title,
       uid: json.uid,
     },
   });
@@ -285,17 +299,16 @@ const restorePageByJson = async (pageTitle: string, json: Snapshot) => {
     restoreBlock(json, child);
   });
 };
-const restorePage = (pageTitle: string, json: Snapshot) => {
+const restorePage = (pageUid: string, json: Snapshot) => {
   isRestoring = true;
   // 暂停当前进行中的页面快照.
-  SNAP_SHOT_MAP.delete(pageTitle);
-  cleanPage(pageTitle);
-  restorePageByJson(pageTitle, json);
+  cleanPage(pageUid);
+  restorePageByJson(json);
   isRestoring = false;
 };
 
 const minute_1 = 1000 * 6;
-const minute_10 = minute_1 * 10;
+const minute_10 = minute_1 * 3;
 let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
@@ -310,6 +323,7 @@ const startLoop = () => {
     });
   }, minute_1);
   extension_helper.on_uninstall(() => {
+    console.log("Clean loop");
     clearInterval(id);
   });
 };
@@ -320,10 +334,11 @@ const startLoop = () => {
  * Over the course of thirty minutes, you should expect to see three different versions in the page history.
  */
 const triggerSnapshotRecordByPageTitle = (pageTitle: string) => {
-  SNAP_SHOT_MAP.set(pageTitle, {
+  const uid = getPageUidByPageTitle(pageTitle);
+  SNAP_SHOT_MAP.set(uid, {
     start: Date.now(),
     end: Date.now() + minute_10,
-    name: pageTitle,
+    uid,
   });
 };
 
@@ -339,6 +354,7 @@ function listenToChange() {
       if (mutation.type === "childList" && !isRestoring) {
         const pageTitle = getPageTitleFromDom(mutation.target as HTMLElement);
         if (pageTitle) {
+          console.log(mutation.target, " --- ", pageTitle);
           triggerSnapshotRecordByPageTitle(pageTitle);
         }
       }
