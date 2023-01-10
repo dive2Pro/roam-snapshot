@@ -21,7 +21,11 @@ function TopbarIcon() {
           Page History
         </span>
       </a>
-      <Dialog onClose={() => setOpen((prev) => !prev)} isOpen={open}>
+      <Dialog
+        onClose={() => setOpen((prev) => !prev)}
+        isOpen={open}
+        style={{ width: "unset" }}
+      >
         <Extension />
       </Dialog>
     </>

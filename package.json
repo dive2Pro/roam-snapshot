@@ -9,7 +9,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "arrive": "^2.4.1"
+    "arrive": "^2.4.1",
+    "dayjs": "^1.11.7"
   },
   "devDependencies": {
     "@blueprintjs/core": "3.54.0",

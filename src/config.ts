@@ -3,7 +3,7 @@ export function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
 }
 
-export function getPageSnapshot(page: string): { json: {}; time: number }[] {
+export function getPageSnapshot(page: string): { json: Snapshot; time: number }[] {
   const result = API.settings.get(page);
   if (!result) {
     return [];
@@ -15,10 +15,11 @@ export function getPageSnapshot(page: string): { json: {}; time: number }[] {
   }
 }
 
-export function savePageSnapshot(page: string, snapshot: {}) {
+export function savePageSnapshot(page: string, snapshot: Snapshot) {
   const old = getPageSnapshot(page);
   old.push({
     json: snapshot,
     time: Date.now(),
   });
+  API.settings.set(page, JSON.stringify(old));
 }

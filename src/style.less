@@ -1,3 +1,16 @@
 .rm-snapshot {
-    
+    display: flex;
+    height: 80vh;
+    width: 80vw;
+    &-view{
+        width: calc(100% - 240px);
+    }
+    &-list {
+        display: flex;
+        flex-direction: column;
+        width: 240px;
+        &-view {
+            flex: 1;
+        }
+    }
 }

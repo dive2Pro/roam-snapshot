@@ -1,13 +1,75 @@
-import React from "react";
-import ReactDOM from "react-dom";
-import { savePageSnapshot } from "./config";
+import { Button, Menu, MenuItem } from "@blueprintjs/core";
+import React, { useEffect, useState } from "react";
+import { getPageSnapshot, savePageSnapshot } from "./config";
 import { extension_helper } from "./helper";
+import Dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+Dayjs.extend(relativeTime)
 import "./style.less";
 
+const getCurrentPageFromApi = async () => {
+  const uid = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
+  const pageTitle = window.roamAlphaAPI.q(
+    `[:find ?e . :where [?b :block/uid "${uid}"] [?b :block/page ?p] [?p :node/title ?e]]`
+  );
+
+  if (pageTitle) {
+    return pageTitle as unknown as string;
+  }
+
+  return window.roamAlphaAPI.q(
+    `[:find ?e . :where [?b :block/uid "${uid}"]  [?b :node/title ?e]]`
+  ) as unknown as string;
+};
+
+function PagePreview(props: { json: Snapshot }) {
+  return <div>Hello</div>;
+}
+const timeFormat = (time: number) => {
+  const fiveDaysInner = Dayjs(Date.now()).startOf('day').subtract(5, 'day');
+  if (time >= fiveDaysInner.valueOf()) {
+    return Dayjs(time).fromNow()
+  }
+  return Dayjs(time).format(`YYYY/MM/DD HH:mm`)
+}
 export default function Extension() {
+  const [index, setIndex] = useState(0);
+  const [list, setList] = useState<{ json: Snapshot; time: number }[]>([]);
+  useEffect(() => {
+    const mount = async () => {
+      const pageTitle = await getCurrentPageFromApi();
+      setList(getPageSnapshot(pageTitle).sort((a, b) => b.time - a.time));
+    };
+    mount();
+  }, []);
+  console.log(list, " = list");
   return (
-    <div className="extension-template">
-      <h1>Hello Roam</h1>
+    <div className="rm-snapshot">
+      <div className="rm-snapshot-view">
+        {list[index] ? <PagePreview json={list[index].json} /> : null}
+      </div>
+      <div className="rm-snapshot-list">
+        <Menu className="rm-snapshot-list-view"  >
+          {list.map((item, i) => {
+            return (
+              <MenuItem
+                popoverProps={{
+                  autoFocus: false
+                }}
+                active={index === i}
+                key={item.time}
+                onClick={() => setIndex(i)}
+                className="rm-snapshot-list-view-item"
+                text={timeFormat(item.time)}
+              />
+            );
+          })}
+        </Menu>
+        <div className="rm-snapshot-list-footer">
+          <Button text="Restore version" intent="primary" />
+          <Button text="Cancel" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -38,8 +100,8 @@ const getFullPageJson = (pageTitle: string) => {
       :block/props
       :block/parents
       {:block/children ...}
-    ] .) :where [?b :node/title "${pageTitle}"]]`
-  );
+    ]) . :where [?b :node/title "${pageTitle}"]]`
+  ) as unknown as Snapshot;
 };
 
 const recordPage = (item: Info) => {
@@ -52,7 +114,7 @@ const recordPage = (item: Info) => {
   isRestoring = false;
 };
 
-const minute_1 = 1000 * 60;
+const minute_1 = 1000 * 6;
 const minute_10 = minute_1 * 10;
 let isRestoring = false;
 const startLoop = () => {
@@ -61,6 +123,7 @@ const startLoop = () => {
     //TODO: 防止应用被关闭, 应用记录被打断, 将数据存到本地.
 
     SNAP_SHOT_MAP.forEach((item) => {
+      console.log("test:", item);
       if (isExceed(item.end)) {
         recordPage(item);
       }
