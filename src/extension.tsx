@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import { savePageSnapshot } from "./config";
 import { extension_helper } from "./helper";
 import "./style.less";
 
@@ -42,13 +43,12 @@ const getFullPageJson = (pageTitle: string) => {
 };
 
 const recordPage = (item: Info) => {
-  // 先删除记录, 避免在记录页面快照时, 又有修改记录进来.
+  // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
   SNAP_SHOT_MAP.delete(item.name);
   //
   isRestoring = true;
   const json = getFullPageJson(item.name);
-
-  
+  savePageSnapshot(item.name, json);
   isRestoring = false;
 };
 
