@@ -1,11 +1,12 @@
 import { Button, ButtonGroup, Menu, MenuItem, Icon } from "@blueprintjs/core";
-import React, { useEffect, useRef, useState } from "react";
+import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import { diffSnapshot, getPageSnapshot, savePageSnapshot } from "./config";
 import { extension_helper } from "./helper";
 import Dayjs from "dayjs";
 import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
+import { JsDiff, diff } from "./diff-string";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -28,6 +29,8 @@ function Block(props: {
   data: SnapshotBlock;
   level: number;
   viewType?: string;
+  diff?: DiffBlock;
+  parentUids: string[];
 }) {
   return (
     <div
@@ -86,7 +89,19 @@ function Block(props: {
           }}
           className="rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text"
         >
-          {`${props.data.string}`}
+          <PreviewTitle
+            diff={(() => {
+              if (props.diff) {
+                if (
+                  props.diff.changed[props.data.uid] &&
+                  props.diff.changed[props.data.uid].string
+                ) {
+                  return props.diff.changed[props.data.uid].string;
+                }
+              }
+              return undefined;
+            })()}
+          >{`${props.data.string}`}</PreviewTitle>
         </div>
       </div>
       <div
@@ -101,6 +116,8 @@ function Block(props: {
                   viewType={props.data["view-type"]}
                   data={child}
                   level={props.level + 1}
+                  diff={props.diff}
+                  parentUids={[...props.parentUids, props.data.uid]}
                 />
               ))
           : null}
@@ -109,21 +126,24 @@ function Block(props: {
   );
 }
 
-function PagePreview(props: { index: number; uid: string }) {
-  const [state, setState] = useState<{ json: Snapshot }>();
+function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
+  const [state, setState] = useState<{ diff?: Diff }>({});
   const [loading, setLoading] = useState(false);
   useEffect(() => {
-    setLoading(true);
-    setState(diffSnapshot(props.uid, props.index, props.index + 1));
-    setLoading(false);
-  }, [props.index]);
+    if (props.data) {
+      setLoading(true);
+      setState({ diff: diffSnapshot(props.uid, props.index, props.index + 1) });
+      setLoading(false);
+    }
+  }, [props.data]);
+  console.log(state, " --- state");
   return (
     <div className="rm-snapshot-view">
       {loading ? (
         <Icon className="loading" icon="refresh" />
       ) : (
         <>
-          {!state?.json ? (
+          {!props?.data ? (
             <div className="rm-snapshot-view-empty">
               <Icon icon="outdated" size={30}></Icon>
               <div style={{ maxWidth: 340 }}>
@@ -138,15 +158,24 @@ function PagePreview(props: { index: number; uid: string }) {
                   <div>
                     <div className="rm-snapshot-view-title">
                       <h1 className="rm-title-display">
-                        <span>{state.json?.title}</span>
+                        <PreviewTitle diff={state.diff?.title}>
+                          {props.data.title}
+                        </PreviewTitle>
                       </h1>
                     </div>
                     <div className="rm-block-children rm-block__children rm-level-0">
                       <div className="rm-multibar"></div>
-                      {state.json.children
+                      {props.data.children
                         .sort((a, b) => a.order - b.order)
                         .map((child) => {
-                          return <Block data={child} level={1} />;
+                          return (
+                            <Block
+                              diff={state.diff?.block}
+                              data={child}
+                              parentUids={[props.uid]}
+                              level={1}
+                            />
+                          );
                         })}
                     </div>
                   </div>
@@ -159,6 +188,32 @@ function PagePreview(props: { index: number; uid: string }) {
     </div>
   );
 }
+
+const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
+  const diffResult = useMemo(() => {
+    return diff.diff(props.diff.old, props.diff.now);
+    // return JsDiff.diffString(props.diff.old, props.diff.now);
+  }, [props.diff]);
+  console.log(diffResult.toString(), " string diff");
+  return (
+    <div
+      dangerouslySetInnerHTML={{
+        __html: `${diffResult.toString().richText}`,
+      }}
+    >
+      {diffResult.richText}
+    </div>
+  );
+};
+
+const PreviewTitle: FC<{ diff?: { old: string; now: string } }> = (props) => {
+  if (props.diff) {
+    return <DiffString diff={props.diff} />;
+  } else {
+    return <span>{props.children}</span>;
+  }
+};
+
 const timeFormat = (time: number) => {
   return Dayjs(time).calendar(null, {
     sameDay: "[Today at] HH:mm", // The same day ( Today at 12:30)
@@ -190,10 +245,14 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     await delay();
     props.onChange(false);
   };
-  console.log(list, " = list");
+  // console.log(list, " = list");
   return (
     <div className="rm-snapshot">
-      <PagePreview uid={pageUidRef.current} index={index} />
+      <PagePreview
+        uid={pageUidRef.current}
+        data={list[index]?.json}
+        index={index}
+      />
       <div className="rm-snapshot-list">
         <Menu className="rm-snapshot-list-view">
           {list.map((item, i) => {

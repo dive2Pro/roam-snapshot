@@ -100,61 +100,14 @@ export function diffSnapshot(pageUid: string, now: number, old: number) {
     return undefined
   }
   if (old >= snapshots.length) {
-    return snapshots[now]
+    return undefined
   }
   const targetSnapshot = snapshots[old];
   const diff = {};
   diffSnapshots(diff, snapshots[now].json, targetSnapshot.json);
-  console.log(diff);
-  return snapshots[now];
+  return diff;
 }
 
-type DiffSnapshotBlock = {
-  open?: {
-    old: boolean;
-    now: boolean;
-  };
-  order: number;
-  string?: {
-    old: string;
-    now: string;
-  };
-  uid: string;
-  "text-align"?: {
-    old: "center" | "left" | "right";
-    now: "center" | "left" | "right";
-  };
-  heading?: {
-    old: number;
-    now: number;
-  };
-  "view-type"?: {
-    old: "bullet" | "numbered" | "document";
-    now: "bullet" | "numbered" | "document";
-  };
-  children?: DiffSnapshotBlock[];
-};
-type DiffSnapshot = {
-  time: number;
-  uid: string;
-  title: {
-    old: string;
-    now: string;
-  };
-  children: DiffSnapshotBlock[];
-};
-
-type Diff = {
-  title?: {
-    old: string;
-    now: string;
-  };
-  block?: {
-    changed?: Record<string, DiffSnapshotBlock>;
-    deleted?: (SnapshotBlock & { parentUids: string[] })[];
-    added?: (SnapshotBlock & { parentUids: string[] })[];
-  };
-};
 
 const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
   if (now.title !== old.title) {
@@ -263,14 +216,14 @@ function diffSnapshotBlock(
   if (nowlength > oldlength) {
     nowChildren.slice(order).forEach((child) => {
       diff.block.added.push({
-        parentUids: [now.uid],
+        parentUids: [...parentUids, now.uid],
         ...child,
       });
     });
   } else if (nowlength < oldlength) {
     oldChildren.slice(order).forEach((child) => {
       diff.block.deleted.push({
-        parentUids: [now.uid],
+        parentUids: [...parentUids,now.uid],
         ...child,
       });
     });

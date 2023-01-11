@@ -28,3 +28,41 @@ type Snapshot = {
   uid: string;
   children: SnapshotBlock[];
 };
+
+type DiffSnapshotBlock = {
+  open?: {
+    old: boolean;
+    now: boolean;
+  };
+  order: number;
+  string?: {
+    old: string;
+    now: string;
+  };
+  uid: string;
+  "text-align"?: {
+    old: "center" | "left" | "right";
+    now: "center" | "left" | "right";
+  };
+  heading?: {
+    old: number;
+    now: number;
+  };
+  "view-type"?: {
+    old: "bullet" | "numbered" | "document";
+    now: "bullet" | "numbered" | "document";
+  };
+  children?: DiffSnapshotBlock[];
+};
+type DiffBlock = {
+  changed?: Record<string, DiffSnapshotBlock>;
+  deleted?: (SnapshotBlock & { parentUids: string[] })[];
+  added?: (SnapshotBlock & { parentUids: string[] })[];
+};
+type Diff = {
+  title?: {
+    old: string;
+    now: string;
+  };
+  block?: DiffBlock;
+};
