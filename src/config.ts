@@ -19,7 +19,13 @@ export function getPageSnapshot(
 const keys = <T extends {}>(obj: T) => {
   return Object.keys(obj) as unknown as (keyof T)[];
 };
-const compareKeys = ["open", "string", "text-align", "heading", "view-type"] as (keyof SnapshotBlock)[];
+const compareKeys = [
+  "open",
+  "string",
+  "text-align",
+  "heading",
+  "view-type",
+] as (keyof SnapshotBlock)[];
 
 const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
   const aKeys = [...compareKeys, "children"] as (keyof SnapshotBlock)[];
@@ -38,7 +44,7 @@ const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
     if (key === "time") {
       continue;
     }
-    if (a[key] !== b[key]) {
+    if (!fieldEqual(key, a[key], b[key])) {
       console.log("DIFF: ", key, a[key], b[key]);
       return true;
     }
@@ -107,7 +113,7 @@ export function diffSnapshot(pageUid: string, now: number, old: number) {
   }
   const diff = {};
   diffSnapshots(diff, snapshots[now].json, snapshots[old].json);
-  console.log(diff, snapshots[now], snapshots[old], ' ------ dddd')
+  console.log(diff, snapshots[now], snapshots[old], " ------ dddd");
   return diff;
 }
 
@@ -201,7 +207,7 @@ function diffSnapshotBlock(
     "view-type",
   ] as (keyof DiffSnapshotBlock)[];
   changeKeys.forEach((key) => {
-    if (now[key] !== old[key]) {
+    if (!fieldEqual(key, now[key], old[key])) {
       let diffBlock: DiffSnapshotBlock = (diff.block.changed[old.uid] = diff
         .block.changed[old.uid] || {
         uid: old.uid,
@@ -245,3 +251,34 @@ function diffSnapshotBlock(
     });
   }
 }
+
+const getFieldWithDefault = (v: unknown, def: unknown) => {
+  return v ?? def;
+};
+
+const getTextAlignWithDefault = (v?: unknown) => {
+  return getFieldWithDefault(v, "left");
+};
+
+const getHeadingWithDefault = (v?: unknown) => {
+  return getFieldWithDefault(v, v);
+};
+
+const getViewTypeWithDefault = (v?: unknown) => {
+  return getFieldWithDefault(v, "bullet");
+};
+
+const fieldEqual = (field: string, v1: unknown, v2: unknown) => {
+  if (field === "text-align") {
+    return getTextAlignWithDefault(v1) === getTextAlignWithDefault(v2);
+  }
+  if (field === "heading") {
+    return getHeadingWithDefault(v1) === getHeadingWithDefault(v2);
+  }
+
+  if (field === "view-type") {
+    return getViewTypeWithDefault(v1) === getViewTypeWithDefault(v2);
+  }
+
+  return v1 === v2;
+};

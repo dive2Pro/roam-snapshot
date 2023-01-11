@@ -30,6 +30,21 @@ const getCurrentPageFromApi = async () => {
   return uid;
 };
 
+const CONSTANTS = {
+  css: {
+    diff: {
+      block: {
+        add: "blob-addition",
+        del: "blob-deletion",
+      },
+      content : {
+        add: "diff-add",
+        del: "diff-remove"
+      }
+    },
+  },
+};
+
 function Block(props: {
   data: SnapshotBlock;
   level: number;
@@ -67,8 +82,8 @@ function Block(props: {
     <div
       className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
         props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
-      } ${props.data.added ? "blob-addition" : ""} ${
-        props.data.deleted ? "blob-deletion" : ""
+      } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${
+        props.data.deleted ? CONSTANTS.css.diff.block.del : ""
       }`}
     >
       <div className="rm-block-main rm-block__self">
@@ -80,7 +95,7 @@ function Block(props: {
             ></DiffOpen>
           </span>
           {(() => {
-            const clazz = diffOpen ? "diff-add" : "";
+            const clazz = diffOpen ? CONSTANTS.css.diff.block.add : "";
             if (props.viewType === "document") {
               return (
                 <span
@@ -100,7 +115,11 @@ function Block(props: {
                   } ${clazz}
               `}
                 >
-                  <span className="rm-bullet__inner--numbered">
+                  <span
+                    className={`rm-bullet__inner--numbered ${
+                      diffViewType ? CONSTANTS.css.diff.content.add : ""
+                    }`}
+                  >
                     {props.data.order + 1}.
                   </span>
                 </span>
@@ -124,7 +143,7 @@ function Block(props: {
             textAlign: props.data["text-align"],
           }}
           className={`rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text ${
-            diffHeading || diffTextAlign ? "diff-add" : ""
+            diffHeading || diffTextAlign ? CONSTANTS.css.diff.block.add : ""
           }`}
         >
           <PreviewTitle
@@ -146,7 +165,7 @@ function Block(props: {
       <div
         className={`rm-block-children rm-block__children rm-level-${
           props.level
-        } ${diffViewType ? "diff-add" : ""}`}
+        } ${diffViewType ? CONSTANTS.css.diff.block.add : ""}`}
       >
         <div className="rm-multibar"></div>
         {children}
