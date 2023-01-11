@@ -1,6 +1,6 @@
 import { Button, ButtonGroup, Menu, MenuItem, Icon } from "@blueprintjs/core";
 import React, { useEffect, useRef, useState } from "react";
-import { getPageSnapshot, savePageSnapshot } from "./config";
+import { diffSnapshot, getPageSnapshot, savePageSnapshot } from "./config";
 import { extension_helper } from "./helper";
 import Dayjs from "dayjs";
 import calendar from "dayjs/plugin/calendar";
@@ -109,47 +109,60 @@ function Block(props: {
   );
 }
 
-function PagePreview(props: { json?: Snapshot }) {
+function PagePreview(props: { index: number; uid: string }) {
+  const [state, setState] = useState<{ json: Snapshot }>();
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    setLoading(true);
+    setState(diffSnapshot(props.uid, props.index, props.index + 1));
+    setLoading(false);
+  }, [props.index]);
   return (
     <div className="rm-snapshot-view">
-      {!props.json ? (
-        <div className="rm-snapshot-view-empty">
-          <Icon icon="outdated" size={30}></Icon>
-          <div style={{ maxWidth: 340 }}>
-            This page does not have any snapshots yet. Allow up to 10 minutes
-            for the first snapshot to be generated.
-          </div>
-        </div>
+      {loading ? (
+        <Icon className="loading" icon="refresh" />
       ) : (
-        <div className="rm-article-wrapper rm-spacing--small">
-          <div className="roam-article">
-            <div>
-              <div>
-                <div className="rm-snapshot-view-title">
-                  <h1 className="rm-title-display">
-                    <span>{props.json?.title}</span>
-                  </h1>
-                </div>
-                <div className="rm-block-children rm-block__children rm-level-0">
-                  <div className="rm-multibar"></div>
-                  {props.json?.children
-                    .sort((a, b) => a.order - b.order)
-                    .map((child) => {
-                      return <Block data={child} level={1} />;
-                    })}
+        <>
+          {!state?.json ? (
+            <div className="rm-snapshot-view-empty">
+              <Icon icon="outdated" size={30}></Icon>
+              <div style={{ maxWidth: 340 }}>
+                This page does not have any snapshots yet. Allow up to 10
+                minutes for the first snapshot to be generated.
+              </div>
+            </div>
+          ) : (
+            <div className="rm-article-wrapper rm-spacing--small">
+              <div className="roam-article">
+                <div>
+                  <div>
+                    <div className="rm-snapshot-view-title">
+                      <h1 className="rm-title-display">
+                        <span>{state.json?.title}</span>
+                      </h1>
+                    </div>
+                    <div className="rm-block-children rm-block__children rm-level-0">
+                      <div className="rm-multibar"></div>
+                      {state.json.children
+                        .sort((a, b) => a.order - b.order)
+                        .map((child) => {
+                          return <Block data={child} level={1} />;
+                        })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 const timeFormat = (time: number) => {
   return Dayjs(time).calendar(null, {
-    sameDay: "[Today at] h:mm A", // The same day ( Today at 2:30 AM )
-    lastDay: "[Yesterday at] h:mm A", // The day before ( Yesterday at 2:30 AM )
+    sameDay: "[Today at] HH:mm", // The same day ( Today at 12:30)
+    lastDay: "[Yesterday at] HH:mm", // The day before ( Yesterday at 12:30)
     sameElse: "YYYY/MM/DD HH:mm", // Everything else ( 17/10/2011 )
   });
 };
@@ -180,7 +193,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   console.log(list, " = list");
   return (
     <div className="rm-snapshot">
-      <PagePreview json={list[index]?.json} />
+      <PagePreview uid={pageUidRef.current} index={index} />
       <div className="rm-snapshot-list">
         <Menu className="rm-snapshot-list-view">
           {list.map((item, i) => {
