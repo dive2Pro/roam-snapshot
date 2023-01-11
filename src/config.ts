@@ -19,8 +19,10 @@ export function getPageSnapshot(
 const keys = <T extends {}>(obj: T) => {
   return Object.keys(obj) as unknown as (keyof T)[];
 };
+const compareKeys = ["open", "string", "text-align", "heading", "view-type"] as (keyof SnapshotBlock)[];
+
 const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
-  const aKeys = keys(a);
+  const aKeys = [...compareKeys, "children"] as (keyof SnapshotBlock)[];
   for (let i = 0; i < aKeys.length; i++) {
     const key = aKeys[i];
     if (key === "parents") {

@@ -37,13 +37,12 @@ function Block(props: {
   diff?: DiffBlock;
   parentUids: string[];
 }) {
+  const changed = props.diff ? props.diff.changed[props.data.uid] : undefined;
   // console.log(props.data.added, " ---", props.data);
-  const diffOpen = (() => {
-    if (props.diff) {
-      return props.diff.changed[props.data.uid]?.open;
-    }
-    return undefined;
-  })();
+  const diffOpen = changed?.open;
+  const diffViewType = changed?.["view-type"];
+  const diffTextAlign = changed?.["text-align"];
+  const diffHeading = changed?.heading;
   const children = (() => {
     return props.data.children && props.data.open
       ? getChildBlocks(
@@ -122,7 +121,9 @@ function Block(props: {
           style={{
             textAlign: props.data["text-align"],
           }}
-          className="rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text"
+          className={`rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text ${
+            diffHeading || diffTextAlign ? "diff-add" : ""
+          }`}
         >
           <PreviewTitle
             diff={(() => {
@@ -141,7 +142,7 @@ function Block(props: {
         </div>
       </div>
       <div
-        className={`rm-block-children rm-block__children rm-level-${props.level}`}
+        className={`rm-block-children rm-block__children rm-level-${props.level} `}
       >
         <div className="rm-multibar"></div>
         {children}
@@ -160,7 +161,7 @@ function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
       setLoading(false);
     }
   }, [props.data, props.index]);
-  console.log(state, " --- state");
+  // console.log(state, " --- state");
   return (
     <div className="rm-snapshot-view">
       {loading ? (
@@ -525,19 +526,38 @@ const getPageUidFromDom = async (el: HTMLElement) => {
 };
 const mutationTrigger = async (mutation: MutationRecord) => {
   const uid = await getPageUidFromDom(mutation.target as HTMLElement);
-  // console.log(mutation.target, " --- ", uid);
+  console.log(mutation.target, " --- ", uid);
   if (uid) {
     triggerSnapshotRecordByPageUid(uid);
   }
 };
 
+const mutationAttributeTrigger = async (mutation: MutationRecord) => {
+  if (mutation.attributeName === "class") {
+    const uid = await getPageUidFromDom(mutation.target as HTMLElement);
+    const target = mutation.target as HTMLElement;
+    if (uid) {
+      if (
+        target.className.includes(
+          "rm-block__input rm-block__input--view roam-block"
+        ) ||
+        target.className.includes("roam-block-container rm-block")
+      ) {
+        triggerSnapshotRecordByPageUid(uid);
+      }
+    }
+  }
+};
+
 function listenToChange() {
   const targetNode = document.getElementById("app");
-  const config = { childList: true, subtree: true };
+  const config = { childList: true, subtree: true, attributes: true };
   const observer = new MutationObserver((mutationList, observer) => {
     for (const mutation of mutationList) {
       if (mutation.type === "childList" && !isRestoring) {
         mutationTrigger(mutation);
+      } else if (mutation.type === "attributes") {
+        mutationAttributeTrigger(mutation);
       }
     }
   });
