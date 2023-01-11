@@ -27,7 +27,7 @@
       overflow: auto;
     }
   }
-  
+
   .diff-highlight {
     position: relative;
     z-index: 1;
@@ -40,14 +40,23 @@
   .diff-remove {
     .diff-highlight();
     text-decoration-line: line-through;
-    background-color: rgba(255,129,130,0.4);
+    background-color: rgba(255, 129, 130, 0.4);
   }
-  .blob-addition{
+  .blob-addition {
     background-color: #e6ffec;
     padding: 3px 0;
   }
   .blob-deletion {
     padding: 3px 0;
     background-color: #ffebe9;
+  }
+  .rm-caret-toggle {
+    cursor: pointer;
+    opacity: 0;
+    &:hover {
+      opacity: 1;
+    }
+  }
+  .rm-caret:hover {
   }
 }

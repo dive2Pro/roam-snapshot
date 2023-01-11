@@ -37,10 +37,10 @@ const CONSTANTS = {
         add: "blob-addition",
         del: "blob-deletion",
       },
-      content : {
+      content: {
         add: "diff-add",
-        del: "diff-remove"
-      }
+        del: "diff-remove",
+      },
     },
   },
 };
@@ -58,25 +58,40 @@ function Block(props: {
   const diffViewType = changed?.["view-type"];
   const diffTextAlign = changed?.["text-align"];
   const diffHeading = changed?.heading;
+  const [state, setState] = useState(props.data);
   const children = (() => {
-    return props.data.children && props.data.open
-      ? getChildBlocks(
-          props.diff,
-          [...props.parentUids, props.data.uid],
-          props.data.children
-        ).map((child, index) => {
-          return (
-            <Block
-              key={Date.now() + index}
-              viewType={props.data["view-type"]}
-              data={child}
-              level={props.level + 1}
-              diff={props.diff}
-              parentUids={[...props.parentUids, props.data.uid]}
-            />
-          );
-        })
-      : null;
+    if (!state.open) {
+      return null;
+    }
+    const mappedChildren = getChildBlocks(
+      props.diff,
+      [...props.parentUids, state.uid],
+      state.children || []
+    );
+    return mappedChildren.map((child, index) => {
+      return (
+        <Block
+          key={Date.now() + index}
+          viewType={props.data["view-type"]}
+          data={{
+            ...child,
+            ...(props.data.added
+              ? {
+                  added: true,
+                }
+              : {}),
+            ...(props.data.deleted
+              ? {
+                  deleted: true,
+                }
+              : {}),
+          }}
+          level={props.level + 1}
+          diff={props.diff}
+          parentUids={[...props.parentUids, props.data.uid]}
+        />
+      );
+    });
   })();
   return (
     <div
@@ -91,16 +106,27 @@ function Block(props: {
           <span className="block-expand">
             <DiffOpen
               diff={diffOpen}
-              visible={!props.data.open && props.viewType === "document"}
+              onChange={setState}
+              clazz={` ${state.open ? "rm-caret-open" : "rm-caret-closed"} ${
+                props.viewType === "document" && props.data.open
+                  ? "rm-caret-showing"
+                  : ""
+              } ${diffOpen ? `diff-add` : ""} 
+              ${state.open ? "bp3-icon-caret-down" : "bp3-icon-caret-down"}
+                `}
+              visible={
+                (props.data.children || []).filter((child) => !child.deleted)
+                  .length > 0
+              }
             ></DiffOpen>
           </span>
           {(() => {
-            const clazz = diffOpen ? CONSTANTS.css.diff.block.add : "";
+            const clazz = diffOpen ? CONSTANTS.css.diff.content.add : "";
             if (props.viewType === "document") {
               return (
                 <span
-                  className={`rm-bullet   opacity-none ${
-                    props.data.open ? "" : "rm-bullet--closed"
+                  className={`rm-bullet opacity-none ${
+                    state.open ? "" : "rm-bullet--closed"
                   } ${clazz}
               `}
                 >
@@ -111,7 +137,7 @@ function Block(props: {
               return (
                 <span
                   className={`rm-bullet  rm-bullet--numbered rm-bullet--numbered-single-digit ${
-                    props.data.open ? "" : "rm-bullet--closed"
+                    state.open ? "" : "rm-bullet--closed"
                   } ${clazz}
               `}
                 >
@@ -128,7 +154,7 @@ function Block(props: {
             return (
               <span
                 className={`rm-bullet ${
-                  props.data.open ? "" : "rm-bullet--closed"
+                  state.open ? "" : "rm-bullet--closed"
                 }
                 ${clazz}
               `}
@@ -159,7 +185,17 @@ function Block(props: {
 
               return undefined;
             })()}
-          >{`${props.data.string}`}</PreviewTitle>
+          >
+            <span
+              className={`${
+                props.data.added ? CONSTANTS.css.diff.content.add : ""
+              }
+              ${props.data.deleted ? CONSTANTS.css.diff.content.del : ""}
+                `}
+            >
+              {props.data.string}
+            </span>
+          </PreviewTitle>
         </div>
       </div>
       <div
@@ -244,18 +280,16 @@ const getChildBlocks = (
   parentUids: string[],
   nowChildren: SnapshotBlock[]
 ) => {
-  const sorted = nowChildren.sort(sortByOrder);
+  const sorted = [...nowChildren.sort(sortByOrder)];
   const deleted = diff.deleted || [];
-
   if (deleted.length) {
-    console.log(deleted, " = deleted");
     deleted
       .filter((delBlock) => {
         if (delBlock.parentUids.length !== parentUids.length) {
           return false;
         }
-        return parentUids.every((uid, index, ary) => {
-          return parentUids[index] === uid;
+        return parentUids.every((uid, index) => {
+          return delBlock.parentUids[index] === uid;
         });
       })
       .forEach((delBlock) => {
@@ -290,23 +324,20 @@ const getChildBlocks = (
 
 const DiffOpen: FC<{
   diff?: { old: boolean; now: boolean };
+  clazz: string;
   visible: boolean;
+  onChange: any;
 }> = (props) => {
-  const clazz = props.diff ? `diff-add` : "";
-  return !props.visible ? (
+  if (!props.visible) {
+    return (
+      <span className="bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-hidden" />
+    );
+  }
+  return (
     <span
-      className={
-        "bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-open rm-caret-hidden " +
-        clazz
-      }
+      onClick={() => props.onChange((v: DiffSnapshotBlock) => ({ ...v, open: !v.open }))}
+      className={`bp3-icon-standard  rm-caret rm-caret-toggle ${props.clazz}`}
     ></span>
-  ) : (
-    <span
-      className={
-        "bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-closed rm-caret-showing" +
-        clazz
-      }
-    />
   );
 };
 const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
