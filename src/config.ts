@@ -29,7 +29,7 @@ const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
       continue;
     }
     if (key === "children") {
-      if (a[key].length !== b[key].length) {
+      if (a[key]?.length !== b[key]?.length) {
         console.log("DIFF: ", key, a[key], b[key]);
         return true;
       }

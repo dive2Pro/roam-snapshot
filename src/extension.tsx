@@ -100,7 +100,9 @@ function Block(props: {
                   } ${clazz}
               `}
                 >
-                  <span className="rm-bullet__inner--numbered" />
+                  <span className="rm-bullet__inner--numbered">
+                    {props.data.order + 1}.
+                  </span>
                 </span>
               );
             }
@@ -142,7 +144,9 @@ function Block(props: {
         </div>
       </div>
       <div
-        className={`rm-block-children rm-block__children rm-level-${props.level} `}
+        className={`rm-block-children rm-block__children rm-level-${
+          props.level
+        } ${diffViewType ? "diff-add" : ""}`}
       >
         <div className="rm-multibar"></div>
         {children}
