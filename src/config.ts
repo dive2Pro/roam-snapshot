@@ -54,7 +54,7 @@ const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
   return false;
 };
 
-const sortByOrder = (a: SnapshotBlock, b: SnapshotBlock) => a.order - b.order;
+export const sortByOrder = (a: SnapshotBlock, b: SnapshotBlock) => a.order - b.order;
 const hasDifference = (a: Snapshot, b: Snapshot) => {
   if (a.title !== b.title) {
     return true;
@@ -121,6 +121,7 @@ const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       added: now.children.map((child) => ({
         ...child,
         parentUids: [now.uid],
+        added: true,
       })),
     };
   } else if (old.children.length && !now.children?.length) {
@@ -128,6 +129,7 @@ const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       deleted: old.children.map((child) => ({
         ...child,
         parentUids: [now.uid],
+        deleted: true
       })),
     };
   } else {
@@ -154,6 +156,7 @@ const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
         diff.block.added.push({
           parentUids: [now.uid],
           ...child,
+          added: true,
         });
       });
     } else if (nowlength < oldlength) {
@@ -161,6 +164,7 @@ const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
         diff.block.deleted.push({
           parentUids: [now.uid],
           ...child,
+          deleted: true,
         });
       });
     }
@@ -174,8 +178,16 @@ function diffSnapshotBlock(
   old: SnapshotBlock
 ) {
   if (now.uid !== old.uid) {
-    diff.block.deleted.push({ ...old, parentUids });
-    diff.block.added.push({ ...now, parentUids });
+    diff.block.deleted.push({
+      ...old,
+      parentUids,
+      deleted: true,
+    });
+    diff.block.added.push({
+      ...now,
+      parentUids,
+      added: true,
+    });
     return;
   }
 
@@ -218,13 +230,15 @@ function diffSnapshotBlock(
       diff.block.added.push({
         parentUids: [...parentUids, now.uid],
         ...child,
+        added: true
       });
     });
   } else if (nowlength < oldlength) {
     oldChildren.slice(order).forEach((child) => {
       diff.block.deleted.push({
-        parentUids: [...parentUids,now.uid],
+        parentUids: [...parentUids, now.uid],
         ...child,
+        deleted: true,
       });
     });
   }

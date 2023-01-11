@@ -1,12 +1,17 @@
 import { Button, ButtonGroup, Menu, MenuItem, Icon } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
-import { diffSnapshot, getPageSnapshot, savePageSnapshot } from "./config";
+import {
+  diffSnapshot,
+  getPageSnapshot,
+  savePageSnapshot,
+  sortByOrder,
+} from "./config";
 import { extension_helper } from "./helper";
 import Dayjs from "dayjs";
 import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
-import { JsDiff, diff } from "./diff-string";
+import { diff } from "./diff-string";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -32,10 +37,13 @@ function Block(props: {
   diff?: DiffBlock;
   parentUids: string[];
 }) {
+  console.log(props, ' ---')
   return (
     <div
       className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
         props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
+      } ${props.data.added ? "blob-code-addition" : ""} ${
+        props.data.deleted ? "blob-code-deletion" : ""
       }`}
     >
       <div className="rm-block-main rm-block__self">
@@ -99,6 +107,7 @@ function Block(props: {
                   return props.diff.changed[props.data.uid].string;
                 }
               }
+
               return undefined;
             })()}
           >{`${props.data.string}`}</PreviewTitle>
@@ -109,9 +118,12 @@ function Block(props: {
       >
         <div className="rm-multibar"></div>
         {props.data.children && props.data.open
-          ? props.data.children
-              .sort((a, b) => a.order - b.order)
-              .map((child) => (
+          ? getChildBlocks(
+              props.diff,
+              [...props.parentUids, props.data.uid],
+              props.data.children
+            ).map((child, index) => {
+              return (
                 <Block
                   viewType={props.data["view-type"]}
                   data={child}
@@ -119,7 +131,8 @@ function Block(props: {
                   diff={props.diff}
                   parentUids={[...props.parentUids, props.data.uid]}
                 />
-              ))
+              );
+            })
           : null}
       </div>
     </div>
@@ -165,18 +178,20 @@ function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
                     </div>
                     <div className="rm-block-children rm-block__children rm-level-0">
                       <div className="rm-multibar"></div>
-                      {props.data.children
-                        .sort((a, b) => a.order - b.order)
-                        .map((child) => {
-                          return (
-                            <Block
-                              diff={state.diff?.block}
-                              data={child}
-                              parentUids={[props.uid]}
-                              level={1}
-                            />
-                          );
-                        })}
+                      {getChildBlocks(
+                        state.diff?.block,
+                        [props.uid],
+                        props.data.children
+                      ).map((child) => {
+                        return (
+                          <Block
+                            diff={state.diff?.block}
+                            data={child}
+                            parentUids={[props.uid]}
+                            level={1}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -188,6 +203,53 @@ function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
     </div>
   );
 }
+
+const getChildBlocks = (
+  diff: DiffBlock = {},
+  parentUids: string[],
+  nowChildren: SnapshotBlock[]
+) => {
+  const sorted = nowChildren.sort(sortByOrder);
+  const deleted = diff.deleted || [];
+
+  if (deleted.length) {
+    deleted
+      .filter((delBlock) => {
+        if (delBlock.parentUids.length !== parentUids.length) {
+          return false;
+        }
+        return parentUids.every((uid, index, ary) => {
+          return parentUids[index] === uid;
+        });
+      })
+      .forEach((delBlock) => {
+        sorted.splice(delBlock.order, 0, delBlock);
+      });
+  }
+
+  const added = diff.added || [];
+  if (added.length) {
+    added
+      .filter((addBlock) => {
+        if (addBlock.parentUids.length !== parentUids.length) {
+          return false;
+        }
+        return parentUids.every((uid, index, ary) => {
+          return parentUids[index] === uid;
+        });
+      })
+      .forEach((addBlock) => {
+        const index = sorted.findIndex((b) => {
+          return b.uid === addBlock.uid;
+        });
+        if (index > -1) {
+          sorted[index] = addBlock;
+        }
+        console.log(sorted, addBlock, " added ");
+      });
+  }
+  return sorted;
+};
 
 const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
   const diffResult = useMemo(() => {

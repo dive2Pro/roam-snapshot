@@ -234,7 +234,7 @@ export const diff = (() => {
 			} else {
 				let txt = `${cur.char}`;
 				plainText += txt;
-				richText += `<span class="iqwerty-diff-${cur.diff === '+' ? 'add' : 'remove'}">${txt}</span>`;
+				richText += `<span class="diff-${cur.diff === '+' ? 'add' : 'remove'}">${txt}</span>`;
 			}
 		}
 

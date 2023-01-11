@@ -27,4 +27,26 @@
       overflow: auto;
     }
   }
+  
+  .diff-highlight {
+    position: relative;
+    padding: 3px 0;
+    z-index: 1;
+  }
+  .diff-add {
+    .diff-highlight();
+    background-color: #abf2bc;
+  }
+
+  .diff-remove {
+    .diff-highlight();
+    text-decoration-line: line-through;
+    background-color: rgba(255,129,130,0.4);
+  }
+  .blob-code-addition{
+    background-color: #e6ffec;
+  }
+  .blob-code-deletion {
+    background-color: #ffebe9;
+  }
 }

@@ -20,6 +20,8 @@ type SnapshotBlock = {
   heading: number;
   "view-type": "bullet" | "numbered" | "document";
   children: SnapshotBlock[];
+  added?: true;
+  deleted?: true;
 };
 
 type Snapshot = {
@@ -56,8 +58,8 @@ type DiffSnapshotBlock = {
 };
 type DiffBlock = {
   changed?: Record<string, DiffSnapshotBlock>;
-  deleted?: (SnapshotBlock & { parentUids: string[] })[];
-  added?: (SnapshotBlock & { parentUids: string[] })[];
+  deleted?: (SnapshotBlock & { parentUids: string[], deleted: true })[];
+  added?: (SnapshotBlock & { parentUids: string[], added: true })[];
 };
 type Diff = {
   title?: {
