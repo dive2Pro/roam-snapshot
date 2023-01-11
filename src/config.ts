@@ -54,7 +54,8 @@ const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
   return false;
 };
 
-export const sortByOrder = (a: SnapshotBlock, b: SnapshotBlock) => a.order - b.order;
+export const sortByOrder = (a: SnapshotBlock, b: SnapshotBlock) =>
+  a.order - b.order;
 const hasDifference = (a: Snapshot, b: Snapshot) => {
   if (a.title !== b.title) {
     return true;
@@ -97,17 +98,16 @@ export function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
 export function diffSnapshot(pageUid: string, now: number, old: number) {
   const snapshots = getPageSnapshot(pageUid);
   if (!snapshots.length) {
-    return undefined
+    return undefined;
   }
   if (old >= snapshots.length) {
-    return undefined
+    return undefined;
   }
-  const targetSnapshot = snapshots[old];
   const diff = {};
-  diffSnapshots(diff, snapshots[now].json, targetSnapshot.json);
+  diffSnapshots(diff, snapshots[now].json, snapshots[old].json);
+  console.log(diff, snapshots[now], snapshots[old], ' ------ dddd')
   return diff;
 }
-
 
 const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
   if (now.title !== old.title) {
@@ -129,7 +129,7 @@ const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       deleted: old.children.map((child) => ({
         ...child,
         parentUids: [now.uid],
-        deleted: true
+        deleted: true,
       })),
     };
   } else {
@@ -230,7 +230,7 @@ function diffSnapshotBlock(
       diff.block.added.push({
         parentUids: [...parentUids, now.uid],
         ...child,
-        added: true
+        added: true,
       });
     });
   } else if (nowlength < oldlength) {

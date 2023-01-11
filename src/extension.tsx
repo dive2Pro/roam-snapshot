@@ -37,31 +37,57 @@ function Block(props: {
   diff?: DiffBlock;
   parentUids: string[];
 }) {
-  console.log(props, ' ---')
+  // console.log(props.data.added, " ---", props.data);
+  const diffOpen = (() => {
+    if (props.diff) {
+      return props.diff.changed[props.data.uid]?.open;
+    }
+    return undefined;
+  })();
+  const children = (() => {
+    return props.data.children && props.data.open
+      ? getChildBlocks(
+          props.diff,
+          [...props.parentUids, props.data.uid],
+          props.data.children
+        ).map((child, index) => {
+          return (
+            <Block
+              key={Date.now() + index}
+              viewType={props.data["view-type"]}
+              data={child}
+              level={props.level + 1}
+              diff={props.diff}
+              parentUids={[...props.parentUids, props.data.uid]}
+            />
+          );
+        })
+      : null;
+  })();
   return (
     <div
       className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
         props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
-      } ${props.data.added ? "blob-code-addition" : ""} ${
-        props.data.deleted ? "blob-code-deletion" : ""
+      } ${props.data.added ? "blob-addition" : ""} ${
+        props.data.deleted ? "blob-deletion" : ""
       }`}
     >
       <div className="rm-block-main rm-block__self">
         <div className="controls rm-block__controls">
           <span className="block-expand">
-            {props.data.open ? (
-              <span className="bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-open rm-caret-hidden"></span>
-            ) : (
-              <span className="bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-closed rm-caret-showing" />
-            )}
+            <DiffOpen
+              diff={diffOpen}
+              visible={!props.data.open && props.viewType === "document"}
+            ></DiffOpen>
           </span>
           {(() => {
+            const clazz = diffOpen ? "diff-add" : "";
             if (props.viewType === "document") {
               return (
                 <span
                   className={`rm-bullet   opacity-none ${
                     props.data.open ? "" : "rm-bullet--closed"
-                  }
+                  } ${clazz}
               `}
                 >
                   <span className="rm-bullet__inner" />
@@ -72,7 +98,7 @@ function Block(props: {
                 <span
                   className={`rm-bullet  rm-bullet--numbered rm-bullet--numbered-single-digit ${
                     props.data.open ? "" : "rm-bullet--closed"
-                  }
+                  } ${clazz}
               `}
                 >
                   <span className="rm-bullet__inner--numbered" />
@@ -84,6 +110,7 @@ function Block(props: {
                 className={`rm-bullet ${
                   props.data.open ? "" : "rm-bullet--closed"
                 }
+                ${clazz}
               `}
               >
                 <span className="rm-bullet__inner" />
@@ -117,23 +144,7 @@ function Block(props: {
         className={`rm-block-children rm-block__children rm-level-${props.level}`}
       >
         <div className="rm-multibar"></div>
-        {props.data.children && props.data.open
-          ? getChildBlocks(
-              props.diff,
-              [...props.parentUids, props.data.uid],
-              props.data.children
-            ).map((child, index) => {
-              return (
-                <Block
-                  viewType={props.data["view-type"]}
-                  data={child}
-                  level={props.level + 1}
-                  diff={props.diff}
-                  parentUids={[...props.parentUids, props.data.uid]}
-                />
-              );
-            })
-          : null}
+        {children}
       </div>
     </div>
   );
@@ -148,7 +159,7 @@ function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
       setState({ diff: diffSnapshot(props.uid, props.index, props.index + 1) });
       setLoading(false);
     }
-  }, [props.data]);
+  }, [props.data, props.index]);
   console.log(state, " --- state");
   return (
     <div className="rm-snapshot-view">
@@ -213,6 +224,7 @@ const getChildBlocks = (
   const deleted = diff.deleted || [];
 
   if (deleted.length) {
+    console.log(deleted, " = deleted");
     deleted
       .filter((delBlock) => {
         if (delBlock.parentUids.length !== parentUids.length) {
@@ -245,12 +257,34 @@ const getChildBlocks = (
         if (index > -1) {
           sorted[index] = addBlock;
         }
-        console.log(sorted, addBlock, " added ");
+        // console.log("addedblock, ", addBlock, parentUids);
+        // console.log(sorted, added, " added ", nowChildren);
       });
   }
   return sorted;
 };
 
+const DiffOpen: FC<{
+  diff?: { old: boolean; now: boolean };
+  visible: boolean;
+}> = (props) => {
+  const clazz = props.diff ? `diff-add` : "";
+  return !props.visible ? (
+    <span
+      className={
+        "bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-open rm-caret-hidden " +
+        clazz
+      }
+    ></span>
+  ) : (
+    <span
+      className={
+        "bp3-icon-standard bp3-icon-caret-down rm-caret rm-caret-closed rm-caret-showing" +
+        clazz
+      }
+    />
+  );
+};
 const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
   const diffResult = useMemo(() => {
     return diff.diff(props.diff.old, props.diff.now);
@@ -314,6 +348,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         uid={pageUidRef.current}
         data={list[index]?.json}
         index={index}
+        key={index}
       />
       <div className="rm-snapshot-list">
         <Menu className="rm-snapshot-list-view">
