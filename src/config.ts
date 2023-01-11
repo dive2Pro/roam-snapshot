@@ -117,7 +117,7 @@ export function diffSnapshot(pageUid: string, now: number, old: number) {
   return diff;
 }
 
-const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
+export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
   if (now.title !== old.title) {
     diff.title = {
       old: old.title,

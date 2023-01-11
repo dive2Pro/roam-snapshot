@@ -2,6 +2,7 @@ import { Button, ButtonGroup, Menu, MenuItem, Icon } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
   diffSnapshot,
+  diffSnapshots,
   getPageSnapshot,
   savePageSnapshot,
   sortByOrder,
@@ -153,9 +154,7 @@ function Block(props: {
             }
             return (
               <span
-                className={`rm-bullet ${
-                  state.open ? "" : "rm-bullet--closed"
-                }
+                className={`rm-bullet ${state.open ? "" : "rm-bullet--closed"}
                 ${clazz}
               `}
               >
@@ -335,7 +334,9 @@ const DiffOpen: FC<{
   }
   return (
     <span
-      onClick={() => props.onChange((v: DiffSnapshotBlock) => ({ ...v, open: !v.open }))}
+      onClick={() =>
+        props.onChange((v: DiffSnapshotBlock) => ({ ...v, open: !v.open }))
+      }
       className={`bp3-icon-standard  rm-caret rm-caret-toggle ${props.clazz}`}
     ></span>
   );
@@ -391,6 +392,10 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const restore = async (json: Snapshot) => {
     setRestoring(true);
     await delay();
+    const diff: Diff = {};
+    diffSnapshots(diff, getFullPageJson(pageUidRef.current), json);
+    //
+    restorePageByDiff(diff);
     restorePage(pageUidRef.current, json);
     setRestoring(false);
     await delay();
@@ -530,6 +535,14 @@ const restorePage = (pageUid: string, json: Snapshot) => {
   // 暂停当前进行中的页面快照.
   cleanPage(pageUid);
   restorePageByJson(json);
+  isRestoring = false;
+};
+
+const restorePageByDiff = (pageUid: string, diff: Diff) => {
+  isRestoring = true;
+  // 暂停当前进行中的页面快照.
+  // TODO: 根据 diff 复原页面.
+  // 要注意的是删除节点时, 要找到最小的操作路径
   isRestoring = false;
 };
 
