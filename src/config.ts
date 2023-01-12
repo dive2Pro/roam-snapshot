@@ -16,7 +16,7 @@ export function getPageSnapshot(
     return [];
   }
 }
-const keys = <T extends {}>(obj: T) => {
+export const keys = <T extends {}>(obj: T) => {
   return Object.keys(obj) as unknown as (keyof T)[];
 };
 const compareKeys = [
@@ -212,6 +212,8 @@ function diffSnapshotBlock(
         .block.changed[old.uid] || {
         uid: old.uid,
         order: old.order,
+        parentUids,
+        _now: now
       });
       // @ts-ignore
       diffBlock[key] = {

@@ -4,6 +4,7 @@ import {
   diffSnapshot,
   diffSnapshots,
   getPageSnapshot,
+  keys,
   savePageSnapshot,
   sortByOrder,
 } from "./config";
@@ -46,6 +47,19 @@ const CONSTANTS = {
   },
 };
 
+const hasDiffInChildren = (block: SnapshotBlock, diff?: DiffBlock): boolean => {
+  if (diff) {
+    const result =
+      diff.added.some((b) => b.parentUids.some((uid) => uid === block.uid)) ||
+      diff.deleted.some((b) => b.parentUids.some((uid) => uid === block.uid)) ||
+      keys(diff.changed).some((key) =>
+        diff.changed[key].parentUids.some((uid) => uid === block.uid)
+      );
+    console.log(result, "  ---- ", block, diff);
+    return result || block.open;
+  }
+  return block.open;
+};
 function Block(props: {
   data: SnapshotBlock;
   level: number;
@@ -59,7 +73,15 @@ function Block(props: {
   const diffViewType = changed?.["view-type"];
   const diffTextAlign = changed?.["text-align"];
   const diffHeading = changed?.heading;
-  const [state, setState] = useState(props.data);
+  const [state, setState] = useState({
+    ...props.data,
+    open: !!hasDiffInChildren(props.data, props.diff), // 当 有 diff 是子孙节点下, 默认打开
+  });
+  useEffect(() => {
+    if (props.diff) {
+      setState((prev) => ({ ...prev, open: !!hasDiffInChildren(props.data, props.diff) }));
+    }
+  }, [props.diff]);
   const children = (() => {
     if (!state.open) {
       return null;
@@ -94,6 +116,7 @@ function Block(props: {
       );
     });
   })();
+  const open = state.open ?? true;
   return (
     <div
       className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
@@ -108,12 +131,12 @@ function Block(props: {
             <DiffOpen
               diff={diffOpen}
               onChange={setState}
-              clazz={` ${state.open ? "rm-caret-open" : "rm-caret-closed"} ${
+              clazz={` ${open ? "rm-caret-open" : "rm-caret-closed"} ${
                 props.viewType === "document" && props.data.open
                   ? "rm-caret-showing"
                   : ""
               } ${diffOpen ? `diff-add` : ""} 
-              ${state.open ? "bp3-icon-caret-down" : "bp3-icon-caret-down"}
+              ${open ? "bp3-icon-caret-down" : "bp3-icon-caret-down"}
                 `}
               visible={
                 (props.data.children || []).filter((child) => !child.deleted)
@@ -122,13 +145,13 @@ function Block(props: {
             ></DiffOpen>
           </span>
           {(() => {
-            const clazz = diffOpen ? CONSTANTS.css.diff.content.add : "";
+            const clazz = `${diffOpen ? CONSTANTS.css.diff.content.add : ""} 
+            ${!open && state.children?.length ? "rm-bullet--closed" : ""}
+            `;
             if (props.viewType === "document") {
               return (
                 <span
-                  className={`rm-bullet opacity-none ${
-                    state.open ? "" : "rm-bullet--closed"
-                  } ${clazz}
+                  className={`rm-bullet opacity-none 
               `}
                 >
                   <span className="rm-bullet__inner" />
@@ -137,9 +160,7 @@ function Block(props: {
             } else if (props.viewType === "numbered") {
               return (
                 <span
-                  className={`rm-bullet  rm-bullet--numbered rm-bullet--numbered-single-digit ${
-                    state.open ? "" : "rm-bullet--closed"
-                  } ${clazz}
+                  className={`rm-bullet  rm-bullet--numbered rm-bullet--numbered-single-digit ${clazz}
               `}
                 >
                   <span
@@ -154,8 +175,7 @@ function Block(props: {
             }
             return (
               <span
-                className={`rm-bullet ${state.open ? "" : "rm-bullet--closed"}
-                ${clazz}
+                className={`rm-bullet ${clazz}
               `}
               >
                 <span className="rm-bullet__inner" />
@@ -395,8 +415,8 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     const diff: Diff = {};
     diffSnapshots(diff, getFullPageJson(pageUidRef.current), json);
     //
-    restorePageByDiff(diff);
-    restorePage(pageUidRef.current, json);
+    restorePageByDiff(json.uid, diff);
+    // restorePage(pageUidRef.current, json);
     setRestoring(false);
     await delay();
     props.onChange(false);
@@ -541,8 +561,49 @@ const restorePage = (pageUid: string, json: Snapshot) => {
 const restorePageByDiff = (pageUid: string, diff: Diff) => {
   isRestoring = true;
   // 暂停当前进行中的页面快照.
-  // TODO: 根据 diff 复原页面.
-  // 要注意的是删除节点时, 要找到最小的操作路径
+  if (diff.title) {
+    window.roamAlphaAPI.updatePage({
+      page: {
+        title: diff.title.now,
+        uid: pageUid,
+      },
+    });
+  }
+  if (diff.block) {
+    if (diff.block.changed) {
+      keys(diff.block.changed).forEach((key) => {
+        const blockDiff = diff.block.changed[key]._now;
+        window.roamAlphaAPI.updateBlock({
+          block: {
+            ...blockDiff,
+            "children-view-type": blockDiff["view-type"],
+          },
+        });
+      });
+    }
+    if (diff.block.added) {
+      diff.block.added.forEach((block) => {
+        window.roamAlphaAPI.createBlock({
+          block: {
+            ...block,
+            "children-view-type": block["view-type"],
+          },
+          location: {
+            "parent-uid": block.parentUids[block.parentUids.length - 1],
+            order: block.order,
+          },
+        });
+      });
+    }
+    if (diff.block.deleted) {
+      // TODO 要找到最小的操作路径
+      diff.block.deleted.forEach((block) => {
+        window.roamAlphaAPI.deleteBlock({
+          block,
+        });
+      });
+    }
+  }
   isRestoring = false;
 };
 

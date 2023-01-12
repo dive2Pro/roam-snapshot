@@ -57,7 +57,13 @@ type DiffSnapshotBlock = {
   children?: DiffSnapshotBlock[];
 };
 type DiffBlock = {
-  changed?: Record<string, DiffSnapshotBlock>;
+  changed?: Record<
+    string,
+    DiffSnapshotBlock & {
+      _now: SnapshotBlock;
+      parentUids: string[]
+    }
+  >;
   deleted?: (SnapshotBlock & { parentUids: string[]; deleted: true })[];
   added?: (SnapshotBlock & { parentUids: string[]; added: true })[];
 };
