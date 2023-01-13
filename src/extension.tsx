@@ -304,20 +304,11 @@ const getChildBlocks = (
 ) => {
   const sorted = [...nowChildren.sort(sortByOrder)];
   const deleted = diff.deleted || [];
-  if (deleted.length) {
-    deleted
-      .filter((delBlock) => {
-        if (delBlock.parentUids.length !== parentUids.length) {
-          return false;
-        }
-        return parentUids.every((uid, index) => {
-          return delBlock.parentUids[index] === uid;
-        });
-      })
-      .forEach((delBlock) => {
-        sorted.splice(delBlock.order, 0, delBlock);
-      });
-  }
+  const log = (...args: any) => {
+    if (sorted.some((item) => item.uid === "KjohxQR_7")) {
+      console.log(...args);
+    }
+  };
 
   const added = diff.added || [];
   if (added.length) {
@@ -331,15 +322,40 @@ const getChildBlocks = (
         });
       })
       .forEach((addBlock) => {
+        console.log(sorted, '---', addBlock)
         const index = sorted.findIndex((b) => {
-          return b.uid === addBlock.uid;
+          return  b && b.uid === addBlock.uid;
         });
+        log(index, ' added', addBlock)
         if (index > -1) {
-          sorted[index] = addBlock;
+          sorted.splice(index, 1);
+          sorted[addBlock.order] = addBlock;
         }
         // console.log("addedblock, ", addBlock, parentUids);
         // console.log(sorted, added, " added ", nowChildren);
       });
+  }
+   if (deleted.length) {
+     deleted
+       .filter((delBlock) => {
+         if (delBlock.parentUids.length !== parentUids.length) {
+           return false;
+         }
+         return parentUids.every((uid, index) => {
+           return delBlock.parentUids[index] === uid;
+         });
+       })
+       .forEach((delBlock) => {
+         sorted.splice(delBlock.order, 0, delBlock);
+         log(delBlock, " del block", sorted);
+       });
+   }
+  if (
+    diff &&
+    sorted.length > 2 &&
+    sorted.some((item) => item.uid === "KjohxQR_7")
+  ) {
+    log(sorted, diff);
   }
   return sorted;
 };
@@ -424,7 +440,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     await delay();
     props.onChange(false);
   };
-  // console.log(list, " = list");
+  console.log(list, " = list");
   return (
     <div className="rm-snapshot">
       <PagePreview
@@ -528,7 +544,10 @@ const cleanPage = (pageUid: string) => {
   }
 };
 
-const restoreBlock = (parent: { uid: string }, block: SnapshotBlock) => {
+const restoreBlock = async (parent: { uid: string }, block: SnapshotBlock) => {
+  await window.roamAlphaAPI.deleteBlock({
+    block,
+  });
   window.roamAlphaAPI.createBlock({
     location: {
       "parent-uid": parent.uid,
@@ -536,7 +555,7 @@ const restoreBlock = (parent: { uid: string }, block: SnapshotBlock) => {
     },
     block: {
       ...block,
-      "children-view-type": block["view-type"]
+      "children-view-type": block["view-type"],
     },
   });
   if (block.children) {
