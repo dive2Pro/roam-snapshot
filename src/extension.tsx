@@ -55,7 +55,7 @@ const hasDiffInChildren = (block: SnapshotBlock, diff?: DiffBlock): boolean => {
       keys(diff.changed).some((key) =>
         diff.changed[key].parentUids.some((uid) => uid === block.uid)
       );
-    console.log(result, "  ---- ", block, diff);
+    // console.log(result, "  ---- ", block, diff);
     return result || block.open;
   }
   return block.open;
@@ -79,7 +79,10 @@ function Block(props: {
   });
   useEffect(() => {
     if (props.diff) {
-      setState((prev) => ({ ...prev, open: !!hasDiffInChildren(props.data, props.diff) }));
+      setState((prev) => ({
+        ...prev,
+        open: !!hasDiffInChildren(props.data, props.diff),
+      }));
     }
   }, [props.diff]);
   const children = (() => {
@@ -413,7 +416,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     setRestoring(true);
     await delay();
     const diff: Diff = {};
-    diffSnapshots(diff, getFullPageJson(pageUidRef.current), json);
+    diffSnapshots(diff, json, getFullPageJson(pageUidRef.current));
     //
     restorePageByDiff(json.uid, diff);
     // restorePage(pageUidRef.current, json);
@@ -524,6 +527,23 @@ const cleanPage = (pageUid: string) => {
     });
   }
 };
+
+const restoreBlock = (parent: { uid: string }, block: SnapshotBlock) => {
+  window.roamAlphaAPI.createBlock({
+    location: {
+      "parent-uid": parent.uid,
+      order: block.order,
+    },
+    block: {
+      ...block,
+      "children-view-type": block["view-type"]
+    },
+  });
+  if (block.children) {
+    block.children.forEach((grandChild) => restoreBlock(block, grandChild));
+  }
+};
+
 const restorePageByJson = async (json: Snapshot) => {
   await window.roamAlphaAPI.updatePage({
     page: {
@@ -531,20 +551,6 @@ const restorePageByJson = async (json: Snapshot) => {
       uid: json.uid,
     },
   });
-  const restoreBlock = (parent: { uid: string }, block: SnapshotBlock) => {
-    window.roamAlphaAPI.createBlock({
-      location: {
-        "parent-uid": parent.uid,
-        order: block.order,
-      },
-      block: {
-        ...block,
-      },
-    });
-    if (block.children) {
-      block.children.forEach((grandChild) => restoreBlock(block, grandChild));
-    }
-  };
 
   json.children.forEach((child) => {
     restoreBlock(json, child);
@@ -560,6 +566,7 @@ const restorePage = (pageUid: string, json: Snapshot) => {
 
 const restorePageByDiff = (pageUid: string, diff: Diff) => {
   isRestoring = true;
+  console.log(diff, " = diff");
   // 暂停当前进行中的页面快照.
   if (diff.title) {
     window.roamAlphaAPI.updatePage({
@@ -582,18 +589,24 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
       });
     }
     if (diff.block.added) {
-      diff.block.added.forEach((block) => {
-        window.roamAlphaAPI.createBlock({
-          block: {
-            ...block,
-            "children-view-type": block["view-type"],
-          },
-          location: {
-            "parent-uid": block.parentUids[block.parentUids.length - 1],
-            order: block.order,
-          },
+      diff.block.added
+        .sort((a, b) => a.parentUids.length - b.parentUids.length)
+        .forEach((block) => {
+          restoreBlock(
+            { uid: block.parentUids[block.parentUids.length - 1] },
+            block
+          );
+          window.roamAlphaAPI.createBlock({
+            block: {
+              ...block,
+              "children-view-type": block["view-type"],
+            },
+            location: {
+              "parent-uid": block.parentUids[block.parentUids.length - 1],
+              order: block.order,
+            },
+          });
         });
-      });
     }
     if (diff.block.deleted) {
       // TODO 要找到最小的操作路径
