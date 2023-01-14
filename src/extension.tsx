@@ -306,8 +306,8 @@ const getChildBlocks = (
   const deleted = diff.deleted || [];
   const log = (...args: any) => {
     if (sorted.some((item) => item.uid === "KjohxQR_7")) {
-      console.log(...args);
     }
+    console.log(...args);
   };
 
   const added = diff.added || [];
@@ -322,11 +322,11 @@ const getChildBlocks = (
         });
       })
       .forEach((addBlock) => {
-        console.log(sorted, '---', addBlock)
+        console.log(sorted, "---", addBlock);
         const index = sorted.findIndex((b) => {
-          return  b && b.uid === addBlock.uid;
+          return b && b.uid === addBlock.uid;
         });
-        log(index, ' added', addBlock)
+        log(index, " added", addBlock);
         if (index > -1) {
           sorted.splice(index, 1);
           sorted[addBlock.order] = addBlock;
@@ -335,28 +335,23 @@ const getChildBlocks = (
         // console.log(sorted, added, " added ", nowChildren);
       });
   }
-   if (deleted.length) {
-     deleted
-       .filter((delBlock) => {
-         if (delBlock.parentUids.length !== parentUids.length) {
-           return false;
-         }
-         return parentUids.every((uid, index) => {
-           return delBlock.parentUids[index] === uid;
-         });
-       })
-       .forEach((delBlock) => {
-         sorted.splice(delBlock.order, 0, delBlock);
-         log(delBlock, " del block", sorted);
-       });
-   }
-  if (
-    diff &&
-    sorted.length > 2 &&
-    sorted.some((item) => item.uid === "KjohxQR_7")
-  ) {
-    log(sorted, diff);
+  if (deleted.length) {
+    deleted
+      .filter((delBlock) => {
+        if (delBlock.parentUids.length !== parentUids.length) {
+          return false;
+        }
+        return parentUids.every((uid, index) => {
+          return delBlock.parentUids[index] === uid;
+        });
+      })
+      .forEach((delBlock) => {
+        sorted.splice(delBlock.order, 0, delBlock);
+        log(delBlock, " del block", sorted);
+      });
   }
+  log(sorted, diff);
+
   return sorted;
 };
 

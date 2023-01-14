@@ -146,8 +146,47 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       deleted: [],
       changed: {},
     };
+
     const nowChildren = now.children.sort(sortByOrder);
     const oldChildren = old.children.sort(sortByOrder);
+    const nowChildrenMap = (now.children || []).reduce((p, c) => {
+      p[c.uid] = c;
+      return p;
+    }, {} as Record<string, SnapshotBlock>);
+
+    const oldChildrenMap = (old.children || []).reduce((p, c) => {
+      p[c.uid] = c;
+      return p;
+    }, {} as Record<string, SnapshotBlock>);
+    // TODO: 不以 order 上是否相等为判断新增更新的标准.因为这样会让 只是 order 变化的 block 也被识别为 added 和 deleted
+    keys(nowChildrenMap).forEach((key) => {
+      if (oldChildrenMap[key]) {
+        diffSnapshotBlock(
+          diff,
+          [now.uid],
+          nowChildrenMap[key],
+          oldChildrenMap[key]
+        );
+        delete nowChildrenMap[key];
+        delete oldChildrenMap[key];
+      } else {
+      }
+    });
+    keys(nowChildrenMap).forEach((key) => {
+      diff.block.added.push({
+        parentUids: [now.uid],
+        ...nowChildrenMap[key],
+        added: true,
+      });
+    });
+    keys(oldChildrenMap).forEach((key) => {
+      diff.block.deleted.push({
+        parentUids: [now.uid],
+        ...oldChildrenMap[key],
+        deleted: true,
+      });
+    });
+    return;
     const nowlength = nowChildren.length;
     const oldlength = oldChildren.length;
     let order = 0;
@@ -185,26 +224,13 @@ function diffSnapshotBlock(
   now: SnapshotBlock,
   old: SnapshotBlock
 ) {
-  if (now.uid !== old.uid) {
-    diff.block.deleted.push({
-      ...old,
-      parentUids,
-      deleted: true,
-    });
-    diff.block.added.push({
-      ...now,
-      parentUids,
-      added: true,
-    });
-    return;
-  }
-
   const changeKeys = [
     "open",
     "string",
     "text-align",
     "heading",
     "view-type",
+    "order",
   ] as (keyof DiffSnapshotBlock)[];
   changeKeys.forEach((key) => {
     if (!fieldEqual(key, now[key], old[key])) {
@@ -213,7 +239,7 @@ function diffSnapshotBlock(
         uid: old.uid,
         order: old.order,
         parentUids,
-        _now: now
+        _now: now,
       });
       // @ts-ignore
       diffBlock[key] = {
@@ -222,36 +248,37 @@ function diffSnapshotBlock(
       };
     }
   });
-  const nowChildren = (now.children || []).sort(sortByOrder);
-  const oldChildren = (old.children || []).sort(sortByOrder);
-  const nowlength = nowChildren.length;
-  const oldlength = oldChildren.length;
-  let order = 0;
-  for (order = 0; order < Math.min(nowlength, oldlength); order++) {
-    diffSnapshotBlock(
-      diff,
-      [...parentUids, now.uid],
-      nowChildren[order],
-      oldChildren[order]
-    );
-  }
-  if (nowlength > oldlength) {
-    nowChildren.slice(order).forEach((child) => {
-      diff.block.added.push({
-        parentUids: [...parentUids, now.uid],
-        ...child,
-        added: true,
-      });
+  const nowChildrenMap = (now.children || []).reduce((p, c) => {
+    p[c.uid] = c;
+    return p;
+  }, {} as Record<string, SnapshotBlock>);
+
+  const oldChildrenMap = (old.children || []).reduce((p, c) => {
+    p[c.uid] = c;
+    return p;
+  }, {} as Record<string, SnapshotBlock>);
+  // TODO: 不以 order 上是否相等为判断新增更新的标准.因为这样会让 只是 order 变化的 block 也被识别为 added 和 deleted
+  keys(nowChildrenMap).forEach((key) => {
+    if (oldChildrenMap[key]) {
+      diffSnapshotBlock(diff, [...parentUids, now.uid], nowChildrenMap[key], oldChildrenMap[key]);
+      delete nowChildrenMap[key];
+      delete oldChildrenMap[key];
+    }
+  });
+  keys(nowChildrenMap).forEach((key) => {
+    diff.block.added.push({
+      parentUids: [...parentUids, now.uid],
+      ...nowChildrenMap[key],
+      added: true,
     });
-  } else if (nowlength < oldlength) {
-    oldChildren.slice(order).forEach((child) => {
-      diff.block.deleted.push({
-        parentUids: [...parentUids, now.uid],
-        ...child,
-        deleted: true,
-      });
+  });
+  keys(oldChildrenMap).forEach((key) => {
+    diff.block.deleted.push({
+      parentUids: [...parentUids, now.uid],
+      ...oldChildrenMap[key],
+      deleted: true,
     });
-  }
+  });
 }
 
 const getFieldWithDefault = (v: unknown, def: unknown) => {
