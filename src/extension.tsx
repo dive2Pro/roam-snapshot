@@ -97,7 +97,6 @@ function Block(props: {
     return mappedChildren.map((child, index) => {
       return (
         <Block
-          key={Date.now() + index}
           viewType={props.data["view-type"]}
           data={{
             ...child,
@@ -123,13 +122,23 @@ function Block(props: {
   let orderClazz;
   if (changed?.orderChange) {
     if (changed.orderChange.now < changed.orderChange.old) {
-      orderClazz = <Icon
-        intent="success"
-        className="rm-diff-order" icon="double-chevron-up" size={14} />;
+      orderClazz = (
+        <Icon
+          intent="success"
+          className="rm-diff-order"
+          icon="double-chevron-up"
+          size={14}
+        />
+      );
     } else {
-      orderClazz = <Icon
-        intent="danger"
-        className="rm-diff-order" icon="double-chevron-down" size={14} />;
+      orderClazz = (
+        <Icon
+          intent="danger"
+          className="rm-diff-order"
+          icon="double-chevron-down"
+          size={14}
+        />
+      );
     }
   }
   return (
@@ -138,7 +147,7 @@ function Block(props: {
         props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
       } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${
         props.data.deleted ? CONSTANTS.css.diff.block.del : ""
-        }
+      }
         `}
     >
       {orderClazz}
@@ -319,9 +328,9 @@ const getChildBlocks = (
   const sorted = [...nowChildren.sort(sortByOrder)];
   const deleted = diff.deleted || [];
   const log = (...args: any) => {
-    if (sorted.some((item) => item.uid === "KjohxQR_7")) {
+    if (diff && sorted.length) {
+      console.log(...args);
     }
-    console.log(...args);
   };
 
   const added = diff.added || [];
@@ -336,14 +345,15 @@ const getChildBlocks = (
         });
       })
       .forEach((addBlock) => {
-        console.log(sorted, "---", addBlock);
+        console.log(sorted, "--@@@@-", addBlock);
         const index = sorted.findIndex((b) => {
           return b && b.uid === addBlock.uid;
         });
         log(index, " added", addBlock);
         if (index > -1) {
-          sorted.splice(index, 1);
-          sorted[addBlock.order] = addBlock;
+          // debugger
+          sorted.splice(index, 1, addBlock);
+          // sorted[addBlock.order] = addBlock;
         }
         // console.log("addedblock, ", addBlock, parentUids);
         // console.log(sorted, added, " added ", nowChildren);
