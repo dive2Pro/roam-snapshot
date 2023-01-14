@@ -25,6 +25,7 @@ const compareKeys = [
   "text-align",
   "heading",
   "view-type",
+  "order"
 ] as (keyof SnapshotBlock)[];
 
 const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
@@ -230,11 +231,11 @@ function diffSnapshotBlock(
     "text-align",
     "heading",
     "view-type",
-    "order",
+    "order"
   ] as (keyof DiffSnapshotBlock)[];
   changeKeys.forEach((key) => {
     if (!fieldEqual(key, now[key], old[key])) {
-      let diffBlock: DiffSnapshotBlock = (diff.block.changed[old.uid] = diff
+      let diffBlock: DiffBlockShotActually = (diff.block.changed[old.uid] = diff
         .block.changed[old.uid] || {
         uid: old.uid,
         order: old.order,
@@ -246,6 +247,12 @@ function diffSnapshotBlock(
         old: old[key],
         now: now[key],
       };
+      if (key === 'order') {
+        diffBlock.orderChange = {
+          old: old[key],
+          now: now[key]
+        }
+      }
     }
   });
   const nowChildrenMap = (now.children || []).reduce((p, c) => {

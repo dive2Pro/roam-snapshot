@@ -120,14 +120,28 @@ function Block(props: {
     });
   })();
   const open = state.open ?? true;
+  let orderClazz;
+  if (changed?.orderChange) {
+    if (changed.orderChange.now < changed.orderChange.old) {
+      orderClazz = <Icon
+        intent="success"
+        className="rm-diff-order" icon="double-chevron-up" size={14} />;
+    } else {
+      orderClazz = <Icon
+        intent="danger"
+        className="rm-diff-order" icon="double-chevron-down" size={14} />;
+    }
+  }
   return (
     <div
       className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
         props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
       } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${
         props.data.deleted ? CONSTANTS.css.diff.block.del : ""
-      }`}
+        }
+        `}
     >
+      {orderClazz}
       <div className="rm-block-main rm-block__self">
         <div className="controls rm-block__controls">
           <span className="block-expand">
