@@ -1,4 +1,11 @@
-import { Button, ButtonGroup, Menu, MenuItem, Icon } from "@blueprintjs/core";
+import {
+  Button,
+  ButtonGroup,
+  Menu,
+  MenuItem,
+  Icon,
+  Alert,
+} from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
   diffSnapshot,
@@ -89,10 +96,12 @@ function Block(props: {
     if (!state.open) {
       return null;
     }
+    console.log(props.data, props.parentUids, " = parent data", props.data.children, [props.parentUids, props.data.uid]);
     const mappedChildren = getChildBlocks(
       props.diff,
-      [...props.parentUids, state.uid],
-      state.children || []
+      [...props.parentUids, props.data.uid],
+      props.data.children || [],
+      props.data
     );
     return mappedChildren.map((child, index) => {
       return (
@@ -323,7 +332,8 @@ function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
 const getChildBlocks = (
   diff: DiffBlock = {},
   parentUids: string[],
-  nowChildren: SnapshotBlock[]
+  nowChildren: SnapshotBlock[],
+  uid?: any
 ) => {
   const sorted = [...nowChildren.sort(sortByOrder)];
   const deleted = diff.deleted || [];
@@ -341,17 +351,26 @@ const getChildBlocks = (
           return false;
         }
         return parentUids.every((uid, index, ary) => {
-          return parentUids[index] === uid;
+          return addBlock.parentUids[index] === uid;
         });
       })
       .forEach((addBlock) => {
-        console.log(sorted, "--@@@@-", addBlock);
         const index = sorted.findIndex((b) => {
           return b && b.uid === addBlock.uid;
         });
-        log(index, " added", addBlock);
+        // log(index," -----@@@" ,uid , " added", addBlock);
+        console.log(
+          index,
+          sorted,
+          "---@@@---",
+          uid,
+          "--@@@@-",
+          addBlock,
+          parentUids,
+          diff
+        );
+
         if (index > -1) {
-          // debugger
           sorted.splice(index, 1, addBlock);
           // sorted[addBlock.order] = addBlock;
         }
@@ -374,7 +393,7 @@ const getChildBlocks = (
         log(delBlock, " del block", sorted);
       });
   }
-  log(sorted, diff);
+  log(sorted, diff, ' ------- diff');
 
   return sorted;
 };
@@ -439,6 +458,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [index, setIndex] = useState(0);
   const [list, setList] = useState<{ json: Snapshot; time: number }[]>([]);
   const [restoring, setRestoring] = useState(false);
+  const [isAlerting, setAlerting] = useState(false);
   let pageUidRef = useRef("");
   useEffect(() => {
     const mount = async () => {
@@ -453,9 +473,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     await delay();
     const diff: Diff = {};
     diffSnapshots(diff, json, getFullPageJson(pageUidRef.current));
-    //
     restorePageByDiff(json.uid, diff);
-    // restorePage(pageUidRef.current, json);
     setRestoring(false);
     await delay();
     props.onChange(false);
@@ -492,9 +510,8 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
               disabled={!list[index]}
               text="Restore version"
               intent="primary"
-              loading={restoring}
               onClick={() => {
-                restore(list[index].json);
+                setAlerting(true);
               }}
             />
             <Button
@@ -506,6 +523,19 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
           </ButtonGroup>
         </div>
       </div>
+      <Alert
+        cancelButtonText="Close"
+        confirmButtonText="Restore"
+        intent="danger"
+        isOpen={isAlerting}
+        onConfirm={() => {
+          restore(list[index].json);
+        }}
+        loading={restoring}
+        onClose={() => setAlerting(false)}
+      >
+        <p>Are you sure you would like to restore to this version?</p>
+      </Alert>
     </div>
   );
 }
