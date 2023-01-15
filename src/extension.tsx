@@ -689,8 +689,8 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   isRestoring = false;
 };
 
-const minute_1 = 1000 * 6;
-const minute_10 = minute_1 * 3;
+const minute_1 = 1000 * 60;
+const minute_10 = minute_1 * 10;
 let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
