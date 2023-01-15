@@ -4,8 +4,7 @@
   "main": "extension.js",
   "scripts": {
     "dev": "concurrently \"tsc --watch\" \"NODE_ENV=dev vite build --watch\"",
-    "build": "tsc && vite build",
-    "preinstall": "npx only-allow pnpm"
+    "build": "tsc && vite build"
   },
   "license": "MIT",
   "dependencies": {

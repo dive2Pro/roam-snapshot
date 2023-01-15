@@ -1,2 +1,2 @@
-pnpm install 
-pnpm run build
+npm install --legacy-peer-deps --save
+npm run build

@@ -6,3 +6,4 @@ extension.js
 extension.css
 extension.js.map
 build/
+package-lock.json
