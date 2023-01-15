@@ -426,8 +426,9 @@ const PreviewTitle: FC<{ diff?: { old: string; now: string } }> = (props) => {
 
 const timeFormat = (time: number) => {
   return Dayjs(time).calendar(null, {
-    sameDay: "[Today at] HH:mm", // The same day ( Today at 12:30)
-    lastDay: "[Yesterday at] HH:mm", // The day before ( Yesterday at 12:30)
+    sameDay: "[Today at] h:mm A", // The same day ( Today at 2:30 AM )
+    lastDay: "[Yesterday at] HH:mm",
+    lastWeek: "YYYY/MM/DD HH:mm", // Last week ( Last Monday at 2:30 AM )
     sameElse: "YYYY/MM/DD HH:mm", // Everything else ( 17/10/2011 )
   });
 };
