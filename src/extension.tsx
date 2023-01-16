@@ -76,11 +76,12 @@ function Block(props: {
   parentUids: string[];
 }) {
   const changed = props.diff ? props.diff.changed[props.data.uid] : undefined;
-  // console.log(props.data.added, " ---", props.data);
   const diffOpen = changed?.open;
   const diffViewType = changed?.["view-type"];
   const diffTextAlign = changed?.["text-align"];
   const diffHeading = changed?.heading;
+  // console.log(props.data.order, " ---", props.data, diffOpen);
+
   const [state, setState] = useState({
     ...props.data,
     open: !!hasDiffInChildren(props.data, props.diff), // 当 有 diff 是子孙节点下, 默认打开
@@ -714,8 +715,8 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   isRestoring = false;
 };
 
-const minute_1 = 10 * 60;
-const minute_10 = minute_1 * 2;
+const minute_1 = 1000 * 60;
+const minute_10 = minute_1 * 10;
 let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
