@@ -8,6 +8,7 @@ import {
 } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
+  deletePageSnapshot,
   diffSnapshot,
   diffSnapshots,
   getPageSnapshot,
@@ -96,7 +97,13 @@ function Block(props: {
     if (!state.open) {
       return null;
     }
-    console.log(props.data, props.parentUids, " = parent data", props.data.children, [props.parentUids, props.data.uid]);
+    // console.log(
+    //   props.data,
+    //   props.parentUids,
+    //   " = parent data",
+    //   props.data.children,
+    //   [props.parentUids, props.data.uid]
+    // );
     const mappedChildren = getChildBlocks(
       props.diff,
       [...props.parentUids, props.data.uid],
@@ -393,7 +400,7 @@ const getChildBlocks = (
         log(delBlock, " del block", sorted);
       });
   }
-  log(sorted, diff, ' ------- diff');
+  log(sorted, diff, " ------- diff");
 
   return sorted;
 };
@@ -459,13 +466,14 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [list, setList] = useState<{ json: Snapshot; time: number }[]>([]);
   const [restoring, setRestoring] = useState(false);
   const [isAlerting, setAlerting] = useState(false);
+  const [isDeleting, setDeleting] = useState(false);
   let pageUidRef = useRef("");
+  const mount = async () => {
+    const pageUid = await getCurrentPageFromApi();
+    pageUidRef.current = pageUid;
+    setList(getPageSnapshot(pageUid).sort((a, b) => b.time - a.time));
+  };
   useEffect(() => {
-    const mount = async () => {
-      const pageUid = await getCurrentPageFromApi();
-      pageUidRef.current = pageUid;
-      setList(getPageSnapshot(pageUid).sort((a, b) => b.time - a.time));
-    };
     mount();
   }, []);
   const restore = async (json: Snapshot) => {
@@ -485,7 +493,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         uid={pageUidRef.current}
         data={list[index]?.json}
         index={index}
-        key={index}
+        key={list[index]?.time}
       />
       <div className="rm-snapshot-list">
         <Menu className="rm-snapshot-list-view">
@@ -515,9 +523,10 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
               }}
             />
             <Button
-              text="Cancel"
+              text="Delete"
+              intent="danger"
               onClick={() => {
-                props.onChange(false);
+                setDeleting(true);
               }}
             />
           </ButtonGroup>
@@ -526,7 +535,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       <Alert
         cancelButtonText="Close"
         confirmButtonText="Restore"
-        intent="danger"
+        intent="success"
         isOpen={isAlerting}
         onConfirm={() => {
           restore(list[index].json);
@@ -535,6 +544,22 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         onClose={() => setAlerting(false)}
       >
         <p>Are you sure you would like to restore to this version?</p>
+      </Alert>
+      <Alert
+        cancelButtonText="Close"
+        confirmButtonText="Delete"
+        intent="danger"
+        isOpen={isDeleting}
+        onConfirm={async () => {
+          console.log("___________________")
+          await deletePageSnapshot(pageUidRef.current, list[index].time);
+          mount();
+        }}
+        icon="trash"
+        loading={restoring}
+        onClose={() => setDeleting(false)}
+      >
+        <p>Are you sure you want to delete this item?</p>
       </Alert>
     </div>
   );
@@ -689,8 +714,8 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   isRestoring = false;
 };
 
-const minute_1 = 1000 * 60;
-const minute_10 = minute_1 * 10;
+const minute_1 = 10 * 60;
+const minute_10 = minute_1 * 2;
 let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.

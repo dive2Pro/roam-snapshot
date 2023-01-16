@@ -25,7 +25,7 @@ const compareKeys = [
   "text-align",
   "heading",
   "view-type",
-  "order"
+  "order",
 ] as (keyof SnapshotBlock)[];
 
 const hasDifferenceWith = (a: SnapshotBlock, b: SnapshotBlock) => {
@@ -102,6 +102,18 @@ export function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
     });
   }
   API.settings.set(pageUid, JSON.stringify(sorted));
+}
+
+export async function deletePageSnapshot(pageUid: string, time: number) {
+  const old = getPageSnapshot(pageUid);
+  // 两个最近的 json 之间有差异, 才插入;
+  const sorted = old.sort((a, b) => {
+    return b.time - a.time;
+  });
+
+  const filtered = sorted.filter((item) => item.time !== time);
+  console.log(pageUid, sorted, filtered, ' -----@@----');
+  await API.settings.set(pageUid, JSON.stringify(filtered));
 }
 
 export function diffSnapshot(pageUid: string, now: number, old: number) {
@@ -231,7 +243,7 @@ function diffSnapshotBlock(
     "text-align",
     "heading",
     "view-type",
-    "order"
+    "order",
   ] as (keyof DiffSnapshotBlock)[];
   changeKeys.forEach((key) => {
     if (!fieldEqual(key, now[key], old[key])) {
@@ -247,11 +259,11 @@ function diffSnapshotBlock(
         old: old[key],
         now: now[key],
       };
-      if (key === 'order') {
+      if (key === "order") {
         diffBlock.orderChange = {
           old: old[key],
-          now: now[key]
-        }
+          now: now[key],
+        };
       }
     }
   });
@@ -267,7 +279,12 @@ function diffSnapshotBlock(
   // TODO: 不以 order 上是否相等为判断新增更新的标准.因为这样会让 只是 order 变化的 block 也被识别为 added 和 deleted
   keys(nowChildrenMap).forEach((key) => {
     if (oldChildrenMap[key]) {
-      diffSnapshotBlock(diff, [...parentUids, now.uid], nowChildrenMap[key], oldChildrenMap[key]);
+      diffSnapshotBlock(
+        diff,
+        [...parentUids, now.uid],
+        nowChildrenMap[key],
+        oldChildrenMap[key]
+      );
       delete nowChildrenMap[key];
       delete oldChildrenMap[key];
     }
