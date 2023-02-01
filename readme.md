@@ -1,4 +1,4 @@
-# Snapshot
+# Page History
 The `Page history` feature lets you see all changes made to a page, when. You can view and restore past versions of any Roam page going back indefinitely.
 
 ## Access page history
