@@ -297,7 +297,7 @@ function PagePreview(props: {
             <div className="rm-snapshot-view-empty">
               <Icon icon="outdated" size={30}></Icon>
               <div style={{ maxWidth: 340 }}>
-                  This page does not have any snapshots yet. Allow up to {getIntervalTime()} minutes for the first snapshot to be generated.
+                This page does not have any snapshots yet. Allow up to {getIntervalTime()} minutes for the first snapshot to be generated.
               </div>
             </div>
           ) : (
@@ -728,12 +728,11 @@ let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
   const id = setInterval(() => {
-    //TODO: 防止应用被关闭, 应用记录被打断, 将数据存到本地.
-
-    SNAP_SHOT_MAP.forEach((item) => {
+    SNAP_SHOT_MAP.forEach((item, key) => {
       console.log("test:", item);
       if (isExceed(item.end)) {
         recordPage(item);
+        SNAP_SHOT_MAP.delete(key)
       }
     });
   }, minute_1);
@@ -743,18 +742,13 @@ const startLoop = () => {
   });
 };
 
-/*
- *
- * Snapshots will be created every ten minutes.
- * Over the course of thirty minutes, you should expect to see three different versions in the page history.
- */
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
-  
-  SNAP_SHOT_MAP.set(uid, {
-    start: Date.now(),
-    end: Date.now() +  getIntervalTime() * minute_1,
-    uid,
-  });
+  if (!SNAP_SHOT_MAP.has(uid))
+    SNAP_SHOT_MAP.set(uid, {
+      start: Date.now(),
+      end: Date.now() + getIntervalTime() * minute_1,
+      uid,
+    });
 };
 
 const getPageUidFromDom = async (el: HTMLElement) => {
