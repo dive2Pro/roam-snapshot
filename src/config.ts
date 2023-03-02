@@ -1,18 +1,78 @@
+import { Toaster } from "@blueprintjs/core";
+
+const CONSTANTS = {
+  PAGE_INTERVAL: 'page-interval'
+}
 let API: RoamExtensionAPI;
 export function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
+  API.settings.panel.create({
+    tabTitle: 'Page History',
+    settings: [
+      {
+        id: CONSTANTS.PAGE_INTERVAL,
+        name: 'Time Interval',
+        description: 'How long should you wait before taking a snapshot of a page after starting to edit it (The unit is minutes)',
+        action: {
+          type: "input",
+          placeholder: "10",
+        }
+      }
+    ]
+  })
 }
 
-export function getPageSnapshot(
+export async function getIntervalTime() {
+  return +API.settings.get(CONSTANTS.PAGE_INTERVAL) || 10
+}
+
+const getKey = (key: string) => {
+  return `rm-history-${key}`
+}
+
+async function saveToServer(key: string, value: string) {
+  // const toast = Toaster.create({
+  //   position: 'top-left'
+  // });
+  // const title = window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", key])[":node/title"]
+  // const id = toast.show({
+  //   message: `Creating a snapshot for [[${title}]]`,
+  //   timeout: 0,
+  // })
+  // // @ts-ignore
+  // const downloadUrl = await window.roamAlphaAPI.util.uploadFile({ file: new File([value], "Page-Snapshot-" + key + ".json", { type: "application/json" }), showToast: false });
+  
+  // const r = await API.settings.set(key, downloadUrl);
+  // setTimeout(() => {
+  //   toast.dismiss(id);
+
+  // }, 2000)
+  const r = localStorage.setItem(getKey(key), value);
+  return r;
+}
+
+async function getFromServer(key: string) {
+  // const downloadUrl = API.settings.get(key) as string;
+  // const result = await fetch(downloadUrl);
+  // return result.json();
+  return localStorage.getItem(getKey(key))
+}
+
+export async function getPageSnapshot(
   page: string
-): { json: Snapshot; time: number }[] {
-  const result = API.settings.get(page);
-  if (!result) {
-    return [];
-  }
+): Promise<{ json: Snapshot; time: number }[]> {
+
   try {
-    return JSON.parse(result as string) as [];
+    const result = await getFromServer(page);
+    console.log(result, ' --- result')
+    if (!result) {
+      return [];
+    }
+    if (typeof result === 'string')
+      return JSON.parse(result as string) as [];
+    return result;
   } catch (e) {
+    console.log(e, ' --')
     return [];
   }
 }
@@ -82,8 +142,8 @@ const hasDifference = (a: Snapshot, b: Snapshot) => {
   return false;
 };
 
-export function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
-  const old = getPageSnapshot(pageUid);
+export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
+  const old = await getPageSnapshot(pageUid);
   // 两个最近的 json 之间有差异, 才插入;
   const sorted = old.sort((a, b) => {
     return b.time - a.time;
@@ -94,6 +154,8 @@ export function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
         json: snapshot,
         time: Date.now(),
       });
+    } else {
+      return;
     }
   } else {
     sorted.unshift({
@@ -101,23 +163,23 @@ export function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
       time: Date.now(),
     });
   }
-  API.settings.set(pageUid, JSON.stringify(sorted));
+  saveToServer(pageUid, JSON.stringify(sorted));
 }
 
+
 export async function deletePageSnapshot(pageUid: string, time: number) {
-  const old = getPageSnapshot(pageUid);
-  // 两个最近的 json 之间有差异, 才插入;
+  const old = await getPageSnapshot(pageUid);
   const sorted = old.sort((a, b) => {
     return b.time - a.time;
   });
 
   const filtered = sorted.filter((item) => item.time !== time);
   console.log(pageUid, sorted, filtered, ' -----@@----');
-  await API.settings.set(pageUid, JSON.stringify(filtered));
+  await saveToServer(pageUid, JSON.stringify(filtered));
 }
 
-export function diffSnapshot(pageUid: string, now: number, old: number) {
-  const snapshots = getPageSnapshot(pageUid);
+export async function diffSnapshot(pageUid: string, snapshots: {json: Snapshot, time: number}[], now: number, old: number) {
+  // const snapshots = await getPageSnapshot(pageUid);
   if (!snapshots.length) {
     return undefined;
   }

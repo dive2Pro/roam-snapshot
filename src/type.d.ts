@@ -76,3 +76,16 @@ type Diff = {
   };
   block?: DiffBlock;
 };
+
+
+declare global {
+  interface Window {
+    roamAlphaAPI: {
+      util2: {
+        uploadFile: {
+          file: File
+        }
+      }
+    }
+  }
+}

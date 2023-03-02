@@ -11,6 +11,7 @@ import {
   deletePageSnapshot,
   diffSnapshot,
   diffSnapshots,
+  getIntervalTime,
   getPageSnapshot,
   keys,
   savePageSnapshot,
@@ -119,13 +120,13 @@ function Block(props: {
             ...child,
             ...(props.data.added
               ? {
-                  added: true,
-                }
+                added: true,
+              }
               : {}),
             ...(props.data.deleted
               ? {
-                  deleted: true,
-                }
+                deleted: true,
+              }
               : {}),
           }}
           level={props.level + 1}
@@ -160,11 +161,9 @@ function Block(props: {
   }
   return (
     <div
-      className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
-        props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
-      } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${
-        props.data.deleted ? CONSTANTS.css.diff.block.del : ""
-      }
+      className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
+        } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${props.data.deleted ? CONSTANTS.css.diff.block.del : ""
+        }
         `}
     >
       {orderClazz}
@@ -174,11 +173,10 @@ function Block(props: {
             <DiffOpen
               diff={diffOpen}
               onChange={setState}
-              clazz={` ${open ? "rm-caret-open" : "rm-caret-closed"} ${
-                props.viewType === "document" && props.data.open
-                  ? "rm-caret-showing"
-                  : ""
-              } ${diffOpen ? `diff-add` : ""} 
+              clazz={` ${open ? "rm-caret-open" : "rm-caret-closed"} ${props.viewType === "document" && props.data.open
+                ? "rm-caret-showing"
+                : ""
+                } ${diffOpen ? `diff-add` : ""} 
               ${open ? "bp3-icon-caret-down" : "bp3-icon-caret-down"}
                 `}
               visible={
@@ -207,9 +205,8 @@ function Block(props: {
               `}
                 >
                   <span
-                    className={`rm-bullet__inner--numbered ${
-                      diffViewType ? CONSTANTS.css.diff.content.add : ""
-                    }`}
+                    className={`rm-bullet__inner--numbered ${diffViewType ? CONSTANTS.css.diff.content.add : ""
+                      }`}
                   >
                     {props.data.order + 1}.
                   </span>
@@ -230,9 +227,8 @@ function Block(props: {
           style={{
             textAlign: props.data["text-align"],
           }}
-          className={`rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text ${
-            diffHeading || diffTextAlign ? CONSTANTS.css.diff.block.add : ""
-          }`}
+          className={`rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text ${diffHeading || diffTextAlign ? CONSTANTS.css.diff.block.add : ""
+            }`}
         >
           <PreviewTitle
             diff={(() => {
@@ -249,9 +245,8 @@ function Block(props: {
             })()}
           >
             <span
-              className={`${
-                props.data.added ? CONSTANTS.css.diff.content.add : ""
-              }
+              className={`${props.data.added ? CONSTANTS.css.diff.content.add : ""
+                }
               ${props.data.deleted ? CONSTANTS.css.diff.content.del : ""}
                 `}
             >
@@ -261,9 +256,8 @@ function Block(props: {
         </div>
       </div>
       <div
-        className={`rm-block-children rm-block__children rm-level-${
-          props.level
-        } ${diffViewType ? CONSTANTS.css.diff.block.add : ""}`}
+        className={`rm-block-children rm-block__children rm-level-${props.level
+          } ${diffViewType ? CONSTANTS.css.diff.block.add : ""}`}
       >
         <div className="rm-multibar"></div>
         {children}
@@ -272,21 +266,31 @@ function Block(props: {
   );
 }
 
-function PagePreview(props: { data: Snapshot; index: number; uid: string }) {
+function PagePreview(props: {
+  data: Snapshot; index: number; uid: string, list: {
+    json: Snapshot,
+    time: number
+  }[]
+}) {
   const [state, setState] = useState<{ diff?: Diff }>({});
   const [loading, setLoading] = useState(false);
   useEffect(() => {
     if (props.data) {
-      setLoading(true);
-      setState({ diff: diffSnapshot(props.uid, props.index, props.index + 1) });
-      setLoading(false);
+      const doAction = async () => {
+        setLoading(true);
+        setState({ diff: await diffSnapshot(props.uid, props.list, props.index, props.index + 1) });
+        setLoading(false);
+      }
+      doAction();
     }
   }, [props.data, props.index]);
   // console.log(state, " --- state");
   return (
     <div className="rm-snapshot-view">
       {loading ? (
-        <Icon className="loading" icon="refresh" />
+        <div className="flex-center">
+          Loading...
+        </div>
       ) : (
         <>
           {!props?.data ? (
@@ -401,7 +405,7 @@ const getChildBlocks = (
         log(delBlock, " del block", sorted);
       });
   }
-  log(sorted, diff, " ------- diff");
+  // log(sorted, diff, " ------- diff");
 
   return sorted;
 };
@@ -472,7 +476,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const mount = async () => {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
-    setList(getPageSnapshot(pageUid).sort((a, b) => b.time - a.time));
+    setList((await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time));
   };
   useEffect(() => {
     mount();
@@ -495,6 +499,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         data={list[index]?.json}
         index={index}
         key={list[index]?.time}
+        list={list}
       />
       <div className="rm-snapshot-list">
         <Menu className="rm-snapshot-list-view">
@@ -712,11 +717,14 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
       });
     }
   }
-  isRestoring = false;
+  setTimeout(() => {
+    isRestoring = false;
+  }, 500)
 };
 
-const minute_1 = 1000 * 60;
+const minute_1 = 1000 * 1 * 60;
 const minute_10 = minute_1 * 10;
+
 let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
@@ -741,10 +749,11 @@ const startLoop = () => {
  * Snapshots will be created every ten minutes.
  * Over the course of thirty minutes, you should expect to see three different versions in the page history.
  */
-const triggerSnapshotRecordByPageUid = (uid: string) => {
+const triggerSnapshotRecordByPageUid = async (uid: string) => {
+  
   SNAP_SHOT_MAP.set(uid, {
     start: Date.now(),
-    end: Date.now() + minute_10,
+    end: Date.now() + await getIntervalTime(),
     uid,
   });
 };

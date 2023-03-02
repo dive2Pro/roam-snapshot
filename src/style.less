@@ -3,8 +3,20 @@
   height: 80vh;
   width: 80vw;
   background-color: white;
+
+  .bp3-dark & {
+    background-color: var(--dark-bg);
+  }
+
+  .rm-snapshot-list-view.bp3-menu {
+    .bp3-dark & {
+      background-color: var(--dark-bg-3);
+    }
+  }
+
   &-view {
     width: calc(100% - 240px);
+
     &-empty {
       height: 100%;
       width: 100%;
@@ -13,18 +25,29 @@
       flex-direction: column;
       display: flex;
     }
+
     box-shadow: rgb(55 53 47 / 9%) 1px 0px 0px;
     z-index: 1;
+
+    .flex-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
   }
+
   &-list {
     display: flex;
     flex-direction: column;
     width: 240px;
+
     &-footer {
       display: flex;
       align-items: center;
       padding: 5px;
     }
+
     &-view {
       flex: 1;
       overflow: auto;
@@ -35,37 +58,56 @@
     position: relative;
     z-index: 1;
   }
+
   .diff-add {
     .diff-highlight();
     background-color: #abf2bc;
+    .bp3-dark & {
+      background-color: rgba(46, 160, 67, 0.4);
+    }
   }
 
   .diff-remove {
     .diff-highlight();
     text-decoration-line: line-through;
     background-color: rgba(255, 129, 130, 0.4);
+      .bp3-dark & {
+          background-color: rgba(248, 81, 73, 0.4);
+        }
   }
+
   .blob-addition {
     background-color: #e6ffec;
     padding: 3px 0;
+    .bp3-dark & {
+      background-color: rgba(46, 160, 67, 0.15);
+    }
   }
+
   .blob-deletion {
     padding: 3px 0;
     background-color: #ffebe9;
+    .bp3-dark & {
+      background-color: rgba(248, 81, 73, 0.15);
+    }
   }
+
   .rm-caret-toggle {
     cursor: pointer;
     opacity: 0;
+
     &:hover {
       opacity: 1;
     }
   }
-  .rm-caret:hover {
-  }
+
+  .rm-caret:hover {}
+
   .rm-diff-order {
     position: absolute;
     top: 5px;
   }
+
   .roam-block-container {
     position: relative;
   }
