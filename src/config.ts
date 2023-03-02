@@ -1,8 +1,18 @@
 import { Toaster } from "@blueprintjs/core";
+import { openDB } from 'idb'
+
+const dbPromise = openDB("rm-history", 1, {
+  upgrade(db) {
+    db.createObjectStore(CONSTANTS.DB_STORE)
+  },
+  
+})
 
 const CONSTANTS = {
-  PAGE_INTERVAL: 'page-interval'
+  PAGE_INTERVAL: 'page-interval',
+  DB_STORE: 'page-history'
 }
+
 let API: RoamExtensionAPI;
 export function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
@@ -47,7 +57,9 @@ async function saveToServer(key: string, value: string) {
   //   toast.dismiss(id);
 
   // }, 2000)
-  const r = localStorage.setItem(getKey(key), value);
+  // const r = localStorage.setItem(getKey(key), value);
+  const r = (await dbPromise).put(CONSTANTS.DB_STORE, value, getKey(key));
+  console.log(r, ' - save result')
   return r;
 }
 
@@ -55,7 +67,11 @@ async function getFromServer(key: string) {
   // const downloadUrl = API.settings.get(key) as string;
   // const result = await fetch(downloadUrl);
   // return result.json();
-  return localStorage.getItem(getKey(key))
+  // return localStorage.getItem(getKey(key))
+  const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key))
+  
+
+  return r;
 }
 
 export async function getPageSnapshot(
