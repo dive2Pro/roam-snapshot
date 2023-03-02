@@ -297,8 +297,7 @@ function PagePreview(props: {
             <div className="rm-snapshot-view-empty">
               <Icon icon="outdated" size={30}></Icon>
               <div style={{ maxWidth: 340 }}>
-                This page does not have any snapshots yet. Allow up to 10
-                minutes for the first snapshot to be generated.
+                  This page does not have any snapshots yet. Allow up to {getIntervalTime()} minutes for the first snapshot to be generated.
               </div>
             </div>
           ) : (
@@ -753,7 +752,7 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
   
   SNAP_SHOT_MAP.set(uid, {
     start: Date.now(),
-    end: Date.now() + await getIntervalTime(),
+    end: Date.now() +  getIntervalTime(),
     uid,
   });
 };

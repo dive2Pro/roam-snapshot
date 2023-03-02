@@ -1,6 +1,10 @@
 # Page History
 The `Page history` feature lets you see all changes made to a page, when. You can view and restore past versions of any Roam page going back indefinitely.
 
+
+> **Please note**: All historical data is currently stored in your browser. 
+
+
 ## Access page history
 
 - Click the ••• menu at the top right of any Roam page. Choose Page history.
@@ -15,7 +19,7 @@ The `Page history` feature lets you see all changes made to a page, when. You ca
 Note: Here's how page history functions!
 
 
-If you are actively editing a page, a snapshot of the current version of the page will be captured every **ten minutes**.
+If you are actively editing a page, a snapshot of the current version of the page will be captured every **ten minutes** (You can change it in settings panel).
 
 ## Restore past page history snapshots
 

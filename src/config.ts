@@ -22,7 +22,7 @@ export function initConfig(extensionAPI: RoamExtensionAPI) {
   })
 }
 
-export async function getIntervalTime() {
+export function getIntervalTime() {
   return +API.settings.get(CONSTANTS.PAGE_INTERVAL) || 10
 }
 
