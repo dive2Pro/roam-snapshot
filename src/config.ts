@@ -5,7 +5,7 @@ const dbPromise = openDB("rm-history", 1, {
   upgrade(db) {
     db.createObjectStore(CONSTANTS.DB_STORE)
   },
-  
+
 })
 
 const CONSTANTS = {
@@ -40,7 +40,7 @@ const getKey = (key: string) => {
   return `rm-history-${key}`
 }
 
-async function saveToServer(key: string, value: string) {
+async function saveToServer(key: string, value: any) {
   // const toast = Toaster.create({
   //   position: 'top-left'
   // });
@@ -51,7 +51,7 @@ async function saveToServer(key: string, value: string) {
   // })
   // // @ts-ignore
   // const downloadUrl = await window.roamAlphaAPI.util.uploadFile({ file: new File([value], "Page-Snapshot-" + key + ".json", { type: "application/json" }), showToast: false });
-  
+
   // const r = await API.settings.set(key, downloadUrl);
   // setTimeout(() => {
   //   toast.dismiss(id);
@@ -69,7 +69,7 @@ async function getFromServer(key: string) {
   // return result.json();
   // return localStorage.getItem(getKey(key))
   const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key))
-  
+
 
   return r;
 }
@@ -179,7 +179,7 @@ export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
       time: Date.now(),
     });
   }
-  saveToServer(pageUid, JSON.stringify(sorted));
+  saveToServer(pageUid, sorted);
 }
 
 
@@ -191,10 +191,10 @@ export async function deletePageSnapshot(pageUid: string, time: number) {
 
   const filtered = sorted.filter((item) => item.time !== time);
   console.log(pageUid, sorted, filtered, ' -----@@----');
-  await saveToServer(pageUid, JSON.stringify(filtered));
+  await saveToServer(pageUid, (filtered));
 }
 
-export async function diffSnapshot(pageUid: string, snapshots: {json: Snapshot, time: number}[], now: number, old: number) {
+export async function diffSnapshot(pageUid: string, snapshots: { json: Snapshot, time: number }[], now: number, old: number) {
   // const snapshots = await getPageSnapshot(pageUid);
   if (!snapshots.length) {
     return undefined;

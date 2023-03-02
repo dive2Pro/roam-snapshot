@@ -752,7 +752,7 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
   
   SNAP_SHOT_MAP.set(uid, {
     start: Date.now(),
-    end: Date.now() +  getIntervalTime(),
+    end: Date.now() +  getIntervalTime() * minute_1,
     uid,
   });
 };
