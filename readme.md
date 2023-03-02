@@ -14,7 +14,7 @@ The `Page history` feature lets you see all changes made to a page, when. You ca
 
 - This opens the Page history window, which enables you to:
   - See all past versions of the current page in a list down the right-hand side. (Every change made to a page creates a separate snapshot.)
-  - Click on any past version to see what the page looked like at that point in time.
+  - Click on any past version to see what the page looked like at that point in time and difference with its prev version.
 
 Note: Here's how page history functions!
 
