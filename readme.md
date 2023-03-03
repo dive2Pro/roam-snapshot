@@ -19,7 +19,7 @@ The `Page history` feature lets you see all changes made to a page, when. You ca
 Note: Here's how page history functions!
 
 
-If you are actively editing a page, a snapshot of the current version of the page will be captured every **ten minutes** (You can change it in settings panel).
+If you are **actively editing** a page, a snapshot of the current version of the page will be captured every **ten minutes** (You can change it in settings panel).
 
 ## Restore past page history snapshots
 
