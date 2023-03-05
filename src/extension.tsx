@@ -5,6 +5,9 @@ import {
   MenuItem,
   Icon,
   Alert,
+  Tree,
+  Classes,
+  TreeNodeInfo,
 } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,6 +26,7 @@ import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
+import dayjs from "dayjs";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -267,10 +271,7 @@ function Block(props: {
 }
 
 function PagePreview(props: {
-  data: Snapshot; index: number; uid: string, list: {
-    json: Snapshot,
-    time: number
-  }[]
+  data: Snapshot; index: number; uid: string, list: ITEM[]
 }) {
   const [state, setState] = useState<{ diff?: Diff }>({});
   const [loading, setLoading] = useState(false);
@@ -463,11 +464,21 @@ const timeFormat = (time: number) => {
   });
 };
 
+const dayFormat = (time: number) => {
+  return Dayjs(time).calendar(null, {
+    sameDay: "[Today]", // The same day ( Today at 2:30 AM )
+    lastDay: "[Yesterday]",
+    lastWeek: "YYYY/MM/DD", // Last week ( Last Monday at 2:30 AM )
+    sameElse: "YYYY/MM/DD", // Everything else ( 17/10/2011 )
+  });
+}
+
 const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [index, setIndex] = useState(0);
-  const [list, setList] = useState<{ json: Snapshot; time: number }[]>([]);
+  const [list, setList] = useState<ITEM[]>([]);
+  const [treeContents, setTreeContents] = useState<TreeNodeInfo<ITEM>[]>()
   const [restoring, setRestoring] = useState(false);
   const [isAlerting, setAlerting] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
@@ -475,7 +486,32 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const mount = async () => {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
-    setList((await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time));
+    const snapList = (await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time)
+    setList(snapList);
+
+    const groupSnapListByDay = (list: ITEM[]) => {
+      const result: Record<string, TreeNodeInfo<ITEM>> = {};
+      list.forEach((item, index) => {
+        const day = dayFormat(item.time);
+        if (!result[day]) {
+          result[day] = {
+            childNodes: [],
+            label: day,
+            id: day,
+            isExpanded: index === 0
+          }
+        }
+        result[day].childNodes.push({
+          label: timeFormat(item.time),
+          id: index,
+          isSelected: index === 0
+        })
+
+      })
+      return Object.values(result)
+    }
+    setTreeContents(groupSnapListByDay(snapList))
+
   };
   useEffect(() => {
     mount();
@@ -490,7 +526,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     await delay();
     props.onChange(false);
   };
-  console.log(list, " = list");
+  // console.log(list, " = list", treeContents);
   return (
     <div className="rm-snapshot">
       <PagePreview
@@ -501,27 +537,50 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         list={list}
       />
       <div className="rm-snapshot-list">
-        <Menu className="rm-snapshot-list-view">
-          {list.map((item, i) => {
-            return (
-              <MenuItem
-                popoverProps={{
-                  autoFocus: false,
-                }}
-                active={index === i}
-                key={item.time}
-                onClick={() => setIndex(i)}
-                className="rm-snapshot-list-view-item"
-                text={timeFormat(item.time)}
-              />
-            );
-          })}
-        </Menu>
+        <div style={{ flex: 1}}>
+
+        <Tree
+          contents={treeContents}
+          onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
+            const originallySelected = node.isSelected;
+            // console.log(originallySelected, ' node ', nodePath);
+           
+            if (!node.childNodes) {
+              setIndex(node.id as number)
+              setTreeContents(prev => {
+                forEachNode(prev, node => node.isSelected = false)
+                forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
+                return [...prev]
+              })
+            } else {
+              setTreeContents(prev => {
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                return [...prev];
+              })
+            }
+          }}
+          onNodeCollapse={(_node, nodePath) => {
+            setTreeContents(prev => {
+              forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
+              return [...prev];
+            })
+          }}
+          onNodeExpand={(_node, nodePath) => {
+            setTreeContents(prev => {
+              forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
+              return [...prev];
+            })
+          }}
+          className={Classes.ELEVATION_0}
+          />
+        </div>
+
         <div className="rm-snapshot-list-footer">
-          <ButtonGroup fill>
+          <ButtonGroup fill >
             <Button
               disabled={!list[index]}
               text="Restore version"
+              active={false}
               intent="primary"
               onClick={() => {
                 setAlerting(true);
@@ -764,7 +823,7 @@ const getPageUidFromDom = async (el: HTMLElement) => {
 };
 const mutationTrigger = async (mutation: MutationRecord) => {
   const uid = await getPageUidFromDom(mutation.target as HTMLElement);
-  console.log(mutation.target, " --- ", uid);
+  // console.log(mutation.target, " --- ", uid);
   if (uid) {
     triggerSnapshotRecordByPageUid(uid);
   }
@@ -811,4 +870,20 @@ export function initExtension() {
   console.log("init extension");
   startLoop();
   listenToChange();
+}
+
+type NodePath = number[];
+function forNodeAtPath(nodes: TreeNodeInfo[], path: NodePath, callback: (node: TreeNodeInfo) => void) {
+  callback(Tree.nodeFromPath(path, nodes));
+}
+
+function forEachNode(nodes: TreeNodeInfo[] | undefined, callback: (node: TreeNodeInfo) => void) {
+  if (nodes === undefined) {
+    return;
+  }
+
+  for (const node of nodes) {
+    callback(node);
+    forEachNode(node.childNodes, callback);
+  }
 }

@@ -31,6 +31,11 @@ type Snapshot = {
   children: SnapshotBlock[];
 };
 
+type ITEM = {
+  json: Snapshot,
+  time: number
+}
+
 type DiffSnapshotBlock = {
   open?: {
     old: boolean;
