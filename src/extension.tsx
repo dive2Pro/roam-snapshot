@@ -537,7 +537,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         list={list}
       />
       <div className="rm-snapshot-list">
-        <div style={{ flex: 1}}>
+        <div className="rm-snapshot-list-view">
 
         <Tree
           contents={treeContents}
@@ -571,7 +571,6 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
               return [...prev];
             })
           }}
-          className={Classes.ELEVATION_0}
           />
         </div>
 
