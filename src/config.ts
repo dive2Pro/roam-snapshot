@@ -68,10 +68,13 @@ async function getFromServer(key: string) {
   // const result = await fetch(downloadUrl);
   // return result.json();
   // return localStorage.getItem(getKey(key))
-  const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key))
-
-
+  const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
   return r;
+}
+
+export async function hasRecordInServer(key: string) {
+  const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
+  return !! await r
 }
 
 export async function getPageSnapshot(
