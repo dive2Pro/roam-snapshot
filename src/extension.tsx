@@ -16,6 +16,7 @@ import {
   diffSnapshots,
   getIntervalTime,
   getPageSnapshot,
+  hasRecordInServer,
   keys,
   savePageSnapshot,
   sortByOrder,
@@ -658,9 +659,8 @@ const getFullPageJson = (uid: string) => {
   ) as unknown as Snapshot;
 };
 
-const recordPage = (item: Info) => {
+const recordPage = (item: {uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
-  SNAP_SHOT_MAP.delete(item.uid);
   const json = getFullPageJson(item.uid);
   savePageSnapshot(item.uid, json);
 };
@@ -801,12 +801,18 @@ const startLoop = () => {
 };
 
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
+  
   if (!SNAP_SHOT_MAP.has(uid))
     SNAP_SHOT_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
+  console.log(await hasRecordInServer(uid) , '---', uid)
+  // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
+  if (!await hasRecordInServer(uid)) {
+    recordPage({ uid })
+  }
 };
 
 const getPageUidFromDom = async (el: HTMLElement) => {
