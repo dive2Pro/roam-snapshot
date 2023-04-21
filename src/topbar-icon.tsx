@@ -32,7 +32,7 @@ function TopbarIcon() {
   );
 }
 
-export function initTopbarIcon() {
+export function initTopbarIcon(extensionAPI: RoamExtensionAPI) {
   const onArrive = (t: HTMLElement) => {
     const parent = t.parentElement.parentElement.parentElement;
     const el = document.createElement("li");
