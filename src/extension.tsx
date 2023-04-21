@@ -36,14 +36,13 @@ const getPageUidByPageTitle = (pageTitle: string) =>
 
 const getCurrentPageFromApi = async () => {
   const uid = await window.roamAlphaAPI.ui.mainWindow.getOpenPageOrBlockUid();
-  const pageTitle = window.roamAlphaAPI.q(
+  const pageUid = window.roamAlphaAPI.q(
     `[:find ?e . :where [?b :block/uid "${uid}"] [?b :block/page ?p] [?p :block/uid ?e]]`
   );
-
-  if (pageTitle) {
-    return pageTitle as unknown as string;
-  }
-  return uid;
+  const trueUid = pageUid || uid;
+  return window.roamAlphaAPI.q(
+    `[:find ?e . :where [?b :block/uid "${trueUid}"]   [?b :node/title ?e]]`
+  ) as unknown as string;
 };
 
 const CONSTANTS = {
@@ -540,38 +539,38 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       <div className="rm-snapshot-list">
         <div className="rm-snapshot-list-view">
 
-        <Tree
-          contents={treeContents}
-          onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
-            const originallySelected = node.isSelected;
-            // console.log(originallySelected, ' node ', nodePath);
-           
-            if (!node.childNodes) {
-              setIndex(node.id as number)
+          <Tree
+            contents={treeContents}
+            onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
+              const originallySelected = node.isSelected;
+              // console.log(originallySelected, ' node ', nodePath);
+
+              if (!node.childNodes) {
+                setIndex(node.id as number)
+                setTreeContents(prev => {
+                  forEachNode(prev, node => node.isSelected = false)
+                  forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
+                  return [...prev]
+                })
+              } else {
+                setTreeContents(prev => {
+                  forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                  return [...prev];
+                })
+              }
+            }}
+            onNodeCollapse={(_node, nodePath) => {
               setTreeContents(prev => {
-                forEachNode(prev, node => node.isSelected = false)
-                forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
-                return [...prev]
-              })
-            } else {
-              setTreeContents(prev => {
-                forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
                 return [...prev];
               })
-            }
-          }}
-          onNodeCollapse={(_node, nodePath) => {
-            setTreeContents(prev => {
-              forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
-              return [...prev];
-            })
-          }}
-          onNodeExpand={(_node, nodePath) => {
-            setTreeContents(prev => {
-              forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
-              return [...prev];
-            })
-          }}
+            }}
+            onNodeExpand={(_node, nodePath) => {
+              setTreeContents(prev => {
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
+                return [...prev];
+              })
+            }}
           />
         </div>
 
@@ -659,10 +658,11 @@ const getFullPageJson = (uid: string) => {
   ) as unknown as Snapshot;
 };
 
-const recordPage = (item: {uid: string }) => {
+const recordPage = (item: { uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
   const json = getFullPageJson(item.uid);
-  savePageSnapshot(item.uid, json);
+
+  savePageSnapshot(json.title, json);
 };
 
 const cleanPage = (pageUid: string) => {
@@ -801,14 +801,14 @@ const startLoop = () => {
 };
 
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
-  
+
   if (!SNAP_SHOT_MAP.has(uid))
     SNAP_SHOT_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
-  console.log(await hasRecordInServer(uid) , '---', uid)
+  console.log(await hasRecordInServer(uid), '---', uid)
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
   if (!await hasRecordInServer(uid)) {
     recordPage({ uid })
