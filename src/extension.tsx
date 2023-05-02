@@ -8,6 +8,8 @@ import {
   Tree,
   Classes,
   TreeNodeInfo,
+  Dialog,
+  Tooltip,
 } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -16,8 +18,11 @@ import {
   diffSnapshots,
   getIntervalTime,
   getPageSnapshot,
+  getSameTitlePageRecordInServer,
   hasRecordInServer,
+  hasSameTitlePageRecordInServer,
   keys,
+  restorePageByPage,
   savePageSnapshot,
   sortByOrder,
 } from "./config";
@@ -476,6 +481,30 @@ const dayFormat = (time: number) => {
 
 const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function RestoreBySameTitleBiz(props: {
+  children: (param: {
+    onConfirm: () => void,
+    onCancel: () => void,
+    text: string
+  }) => any, isOpen: boolean, onClose: () => void
+}) {
+  const [title, setTitle] = useState("")
+  const onConfirm = async () => {
+    const page = await getCurrentPageFromApi()
+    const oldPageUid = await getSameTitlePageRecordInServer(page);
+    restorePageByPage(page, oldPageUid);
+    props.onClose();
+  }
+  const onCancel = () => {
+    props.onClose();
+  }
+  return props.children({
+    onConfirm,
+    onCancel,
+    text: title
+  });
+}
+
 export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [index, setIndex] = useState(0);
   const [list, setList] = useState<ITEM[]>([]);
@@ -483,8 +512,12 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [restoring, setRestoring] = useState(false);
   const [isAlerting, setAlerting] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
+  const [dialogStatus, setDialogStatus] = useState({
+    isRestoringToSamePage: false
+  });
+
   let pageUidRef = useRef("");
-  const mount = async () => {
+  const init = async () => {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
     const snapList = (await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time)
@@ -512,8 +545,23 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       return Object.values(result)
     }
     setTreeContents(groupSnapListByDay(snapList))
-
   };
+  const mount = async () => {
+    const pageUid = await getCurrentPageFromApi();
+    // check if page has snapshots
+    // yes: then go init
+    if (await hasRecordInServer(pageUid)) {
+      return init()
+    }
+    // no: check if there is one snapshots recorded for the same title
+    // yes: open confirm dialog say you want to restore to the snapshots
+
+    if (await hasSameTitlePageRecordInServer(pageUid)) {
+      return setDialogStatus(prev => ({ ...prev, isRestoringToSamePage: true }))
+    }
+    init();
+  }
+
   useEffect(() => {
     mount();
   }, []);
@@ -530,6 +578,35 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   // console.log(list, " = list", treeContents);
   return (
     <div className="rm-snapshot">
+      <RestoreBySameTitleBiz isOpen={dialogStatus.isRestoringToSamePage} onClose={() => {
+        setDialogStatus(prev => ({ ...prev, isRestoringToSamePage: !prev.isRestoringToSamePage }))
+        // init();
+      }}>
+        {
+          (biz) => {
+            return <Dialog isOpen={dialogStatus.isRestoringToSamePage} >
+              <div className={Classes.DIALOG_BODY}>
+                Looks like There is a same title page record has been found, do you wanna restore to it?
+              </div>
+              <div className={Classes.DIALOG_FOOTER}>
+                <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+                  <Tooltip content={"Histories will be override!"}>
+                    <Button intent="warning" onClick={biz.onCancel}>
+                      Cancel
+                    </Button>
+                  </Tooltip>
+
+                  <Button intent="primary" onClick={biz.onConfirm}>
+                    Confirm
+                  </Button>
+                </div>
+              </div>
+            </Dialog>
+
+          }
+        }
+      </RestoreBySameTitleBiz>
+
       <PagePreview
         uid={pageUidRef.current}
         data={list[index]?.json}
@@ -539,39 +616,38 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       />
       <div className="rm-snapshot-list">
         <div className="rm-snapshot-list-view">
+          <Tree
+            contents={treeContents}
+            onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
+              const originallySelected = node.isSelected;
+              // console.log(originallySelected, ' node ', nodePath);
 
-        <Tree
-          contents={treeContents}
-          onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
-            const originallySelected = node.isSelected;
-            // console.log(originallySelected, ' node ', nodePath);
-           
-            if (!node.childNodes) {
-              setIndex(node.id as number)
+              if (!node.childNodes) {
+                setIndex(node.id as number)
+                setTreeContents(prev => {
+                  forEachNode(prev, node => node.isSelected = false)
+                  forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
+                  return [...prev]
+                })
+              } else {
+                setTreeContents(prev => {
+                  forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                  return [...prev];
+                })
+              }
+            }}
+            onNodeCollapse={(_node, nodePath) => {
               setTreeContents(prev => {
-                forEachNode(prev, node => node.isSelected = false)
-                forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
-                return [...prev]
-              })
-            } else {
-              setTreeContents(prev => {
-                forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
                 return [...prev];
               })
-            }
-          }}
-          onNodeCollapse={(_node, nodePath) => {
-            setTreeContents(prev => {
-              forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
-              return [...prev];
-            })
-          }}
-          onNodeExpand={(_node, nodePath) => {
-            setTreeContents(prev => {
-              forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
-              return [...prev];
-            })
-          }}
+            }}
+            onNodeExpand={(_node, nodePath) => {
+              setTreeContents(prev => {
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
+                return [...prev];
+              })
+            }}
           />
         </div>
 
@@ -659,7 +735,7 @@ const getFullPageJson = (uid: string) => {
   ) as unknown as Snapshot;
 };
 
-const recordPage = (item: {uid: string }) => {
+const recordPage = (item: { uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
   const json = getFullPageJson(item.uid);
   savePageSnapshot(item.uid, json);
@@ -736,7 +812,7 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   if (diff.block) {
     if (diff.block.changed) {
       keys(diff.block.changed).forEach((key) => {
-        const blockDiff = diff.block.changed[key]._now;
+        const { parents, ...blockDiff } = diff.block.changed[key]._now;
         window.roamAlphaAPI.updateBlock({
           block: {
             ...blockDiff,
@@ -779,7 +855,8 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   }, 500)
 };
 
-const minute_1 = 1000 * 1 * 60;
+const minute_1 = 1000 * 1 * 10;
+// TODO: 应用时间
 const minute_10 = minute_1 * 10;
 
 let isRestoring = false;
@@ -801,14 +878,15 @@ const startLoop = () => {
 };
 
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
-  
+
   if (!SNAP_SHOT_MAP.has(uid))
     SNAP_SHOT_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getIntervalTime() * minute_1,
+      // end: Date.now() + 0.1 * minute_1,
       uid,
     });
-  console.log(await hasRecordInServer(uid) , '---', uid)
+  console.log(await hasRecordInServer(uid), '---', uid)
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
   if (!await hasRecordInServer(uid)) {
     recordPage({ uid })

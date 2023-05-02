@@ -1,16 +1,17 @@
-import { Toaster } from "@blueprintjs/core";
 import { openDB } from 'idb'
 
-const dbPromise = openDB("rm-history", 1, {
+const dbPromise = openDB<SnapshotBlock>("rm-history", 1, {
   upgrade(db) {
     db.createObjectStore(CONSTANTS.DB_STORE)
+    db.createObjectStore(CONSTANTS.PAGE_TITLE_UID_STORE)
   },
 
-})
+});
 
 const CONSTANTS = {
   PAGE_INTERVAL: 'page-interval',
-  DB_STORE: 'page-history'
+  DB_STORE: 'page-history',
+  PAGE_TITLE_UID_STORE: 'page-uid-title-map'
 }
 
 let API: RoamExtensionAPI;
@@ -37,10 +38,10 @@ export function getIntervalTime() {
 }
 
 const getKey = (key: string) => {
-  return `rm-history-${key}`
+  return key.startsWith("rm-history") ? key : `rm-history-${key}`
 }
 
-async function saveToServer(key: string, value: any) {
+const saveToRoamServe = () => {
   // const toast = Toaster.create({
   //   position: 'top-left'
   // });
@@ -58,9 +59,17 @@ async function saveToServer(key: string, value: any) {
 
   // }, 2000)
   // const r = localStorage.setItem(getKey(key), value);
-  const r = (await dbPromise).put(CONSTANTS.DB_STORE, value, getKey(key));
-  console.log(r, ' - save result')
-  return r;
+}
+
+async function saveToServer(key: string, value: any) {
+  try {
+    const r = (await dbPromise).put(CONSTANTS.DB_STORE, value, getKey(key));
+    (await dbPromise).put(CONSTANTS.PAGE_TITLE_UID_STORE, getKey(key), await getRoamPageTitle(key));
+    console.log(r, ' - save result', typeof value, value)
+    return r;
+  } catch (e) {
+    console.warn(e, ' = e ')
+  }
 }
 
 async function getFromServer(key: string) {
@@ -75,6 +84,27 @@ async function getFromServer(key: string) {
 export async function hasRecordInServer(key: string) {
   const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
   return !! await r
+}
+
+const getRoamPageTitle = (uid: string) => {
+  return window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", uid])[":node/title"]
+}
+export async function hasSameTitlePageRecordInServer(uid: string) {
+  return !! await getSameTitlePageRecordInServer(uid)
+}
+
+export async function getSameTitlePageRecordInServer(uid: string) {
+  const title = getRoamPageTitle(uid);
+  const r = (await dbPromise).get(CONSTANTS.PAGE_TITLE_UID_STORE, title);
+  return await r
+}
+
+export async function restorePageByPage(targetUid: string, sourceUid: string) {
+  console.log(sourceUid, targetUid, "___");
+  const json = await getFromServer(sourceUid)
+
+  saveToServer((targetUid), json.map((item: SnapshotBlock) => ({ ...item, uid: targetUid })));
+
 }
 
 export async function getPageSnapshot(
