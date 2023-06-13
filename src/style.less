@@ -3,7 +3,20 @@
   height: 80vh;
   width: 80vw;
   background-color: white;
+  position: relative;
 
+  .place-spinner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+  }
   .bp3-dark & {
     background-color: var(--dark-bg);
   }
@@ -18,7 +31,9 @@
 
   &-view {
     width: calc(100% - 240px);
-
+    .roam-article {
+      margin: 27px;;
+    }
     &-empty {
       height: 100%;
       width: 100%;

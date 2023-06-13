@@ -8,6 +8,8 @@ import {
   Tree,
   Classes,
   TreeNodeInfo,
+  Spinner,
+  SpinnerSize
 } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -482,13 +484,16 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [treeContents, setTreeContents] = useState<TreeNodeInfo<ITEM>[]>()
   const [restoring, setRestoring] = useState(false);
   const [isAlerting, setAlerting] = useState(false);
+  const [isLoading, setLoading] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
   let pageUidRef = useRef("");
   const mount = async () => {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
+    setLoading(true)
     const snapList = (await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time)
     setList(snapList);
+    setLoading(false)
 
     const groupSnapListByDay = (list: ITEM[]) => {
       const result: Record<string, TreeNodeInfo<ITEM>> = {};
@@ -529,7 +534,12 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   };
   // console.log(list, " = list", treeContents);
   return (
-    <div className="rm-snapshot">
+    <div className="rm-snapshot" >
+      {
+        isLoading ?
+          <div className="place-spinner"><Spinner size={SpinnerSize.LARGE} /></div>
+          : null
+      }
       <PagePreview
         uid={pageUidRef.current}
         data={list[index]?.json}
@@ -540,38 +550,38 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       <div className="rm-snapshot-list">
         <div className="rm-snapshot-list-view">
 
-        <Tree
-          contents={treeContents}
-          onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
-            const originallySelected = node.isSelected;
-            // console.log(originallySelected, ' node ', nodePath);
-           
-            if (!node.childNodes) {
-              setIndex(node.id as number)
+          <Tree
+            contents={treeContents}
+            onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
+              const originallySelected = node.isSelected;
+              // console.log(originallySelected, ' node ', nodePath);
+
+              if (!node.childNodes) {
+                setIndex(node.id as number)
+                setTreeContents(prev => {
+                  forEachNode(prev, node => node.isSelected = false)
+                  forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
+                  return [...prev]
+                })
+              } else {
+                setTreeContents(prev => {
+                  forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                  return [...prev];
+                })
+              }
+            }}
+            onNodeCollapse={(_node, nodePath) => {
               setTreeContents(prev => {
-                forEachNode(prev, node => node.isSelected = false)
-                forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
-                return [...prev]
-              })
-            } else {
-              setTreeContents(prev => {
-                forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
                 return [...prev];
               })
-            }
-          }}
-          onNodeCollapse={(_node, nodePath) => {
-            setTreeContents(prev => {
-              forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
-              return [...prev];
-            })
-          }}
-          onNodeExpand={(_node, nodePath) => {
-            setTreeContents(prev => {
-              forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
-              return [...prev];
-            })
-          }}
+            }}
+            onNodeExpand={(_node, nodePath) => {
+              setTreeContents(prev => {
+                forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
+                return [...prev];
+              })
+            }}
           />
         </div>
 
@@ -659,7 +669,7 @@ const getFullPageJson = (uid: string) => {
   ) as unknown as Snapshot;
 };
 
-const recordPage = (item: {uid: string }) => {
+const recordPage = (item: { uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
   const json = getFullPageJson(item.uid);
   savePageSnapshot(item.uid, json);
@@ -779,7 +789,7 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   }, 500)
 };
 
-const minute_1 = 1000 * 1 * 60;
+const minute_1 = 1000 * 1 * 6;
 const minute_10 = minute_1 * 10;
 
 let isRestoring = false;
@@ -801,14 +811,14 @@ const startLoop = () => {
 };
 
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
-  
+
   if (!SNAP_SHOT_MAP.has(uid))
     SNAP_SHOT_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
-  console.log(await hasRecordInServer(uid) , '---', uid)
+  console.log(await hasRecordInServer(uid), '---', uid)
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
   if (!await hasRecordInServer(uid)) {
     recordPage({ uid })

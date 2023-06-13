@@ -7,6 +7,13 @@ type RoamExtensionAPI = {
     };
     set: (k: string, v: unknown) => Promise<void>;
   };
+  file: {
+    upload: (
+      arg: { file: File, toast?: { hide: boolean } }
+    ) => Promise<string>;
+    get: ({ url: string }) => Promise<File>;
+    delete: ({ url: string }) => Promise<undefined>
+  }
 };
 
 type SnapshotBlock = {

@@ -13,6 +13,55 @@ const CONSTANTS = {
   DB_STORE: 'page-history'
 }
 
+class LocalCache {
+  async add(key: string, value: any) {
+    const r = await (await dbPromise).put(CONSTANTS.DB_STORE, value, key);
+    return r.toString()
+  }
+  async get(key: string) {
+    return (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
+  }
+}
+
+class RemoteCache {
+  async add(key: string, value: any) {
+    const oldUrl = API.settings.get(key) as string;
+
+    if (oldUrl) {
+      try {
+        await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
+          { url: oldUrl }
+        )
+      } catch (e) {
+
+      }
+
+    }
+
+    const url = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.upload({ file: new File([JSON.stringify(value)], `${key}.json`, { type: "application/json" }), toast: { hide: true } })
+    console.log(url, ' = url')
+    await API.settings.set(key, url);
+    return url
+  }
+  async get(key: string) {
+    const url = API.settings.get(key) as string;
+    if (!url) {
+      return undefined
+    }
+
+    const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
+    console.timeEnd("LOADING")
+
+    try {
+      return JSON.parse(await file.text())
+    } catch (e) {
+      return undefined
+    }
+  }
+}
+
+const cache = new RemoteCache()
+
 let API: RoamExtensionAPI;
 export function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
@@ -44,37 +93,19 @@ async function saveToServer(key: string, value: any) {
   // const toast = Toaster.create({
   //   position: 'top-left'
   // });
-  // const title = window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", key])[":node/title"]
-  // const id = toast.show({
-  //   message: `Creating a snapshot for [[${title}]]`,
-  //   timeout: 0,
-  // })
-  // // @ts-ignore
-  // const downloadUrl = await window.roamAlphaAPI.util.uploadFile({ file: new File([value], "Page-Snapshot-" + key + ".json", { type: "application/json" }), showToast: false });
+  const title = window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", key])[":node/title"]
+  // @ts-ignore
+  const downloadUrl = await cache.add(getKey(key), value)
 
-  // const r = await API.settings.set(key, downloadUrl);
-  // setTimeout(() => {
-  //   toast.dismiss(id);
-
-  // }, 2000)
   // const r = localStorage.setItem(getKey(key), value);
-  const r = (await dbPromise).put(CONSTANTS.DB_STORE, value, getKey(key));
-  console.log(r, ' - save result')
-  return r;
+  // cache.add(getKey(key), value)
+  console.log(' - save result', downloadUrl)
 }
 
-async function getFromServer(key: string) {
-  // const downloadUrl = API.settings.get(key) as string;
-  // const result = await fetch(downloadUrl);
-  // return result.json();
-  // return localStorage.getItem(getKey(key))
-  const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
-  return r;
-}
 
 export async function hasRecordInServer(key: string) {
-  const r = (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
-  return !! await r
+  const r = await API.settings.get(getKey(key))
+  return !!r
 }
 
 export async function getPageSnapshot(
@@ -82,7 +113,9 @@ export async function getPageSnapshot(
 ): Promise<{ json: Snapshot; time: number }[]> {
 
   try {
-    const result = await getFromServer(page);
+    console.time("LOADING")
+    const result = await cache.get(getKey(page));
+
     console.log(result, ' --- result')
     if (!result) {
       return [];
