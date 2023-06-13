@@ -2,8 +2,6 @@
 The `Page history` feature lets you see all changes made to a page, when. You can view and restore past versions of any Roam page going back indefinitely.
 
 
-> **Please note**: All historical data is currently stored in your browser. 
-
 
 ## Access page history
 
