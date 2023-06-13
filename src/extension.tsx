@@ -596,13 +596,13 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
                 setAlerting(true);
               }}
             />
-            <Button
+            {/* <Button
               text="Delete"
               intent="danger"
               onClick={() => {
                 setDeleting(true);
               }}
-            />
+            /> */}
           </ButtonGroup>
         </div>
       </div>
@@ -789,7 +789,7 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   }, 500)
 };
 
-const minute_1 = 1000 * 1 * 6;
+const minute_1 = 1000 * 1 * 60;
 const minute_10 = minute_1 * 10;
 
 let isRestoring = false;

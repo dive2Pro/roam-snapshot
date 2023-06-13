@@ -32,6 +32,7 @@ class RemoteCache {
         await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
           { url: oldUrl }
         )
+        console.log(`deleting: ${oldUrl}`)
       } catch (e) {
 
       }
