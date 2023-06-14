@@ -692,22 +692,32 @@ const cleanPage = (pageUid: string) => {
   }
 };
 
-const restoreBlock = async (parent: { uid: string }, block: SnapshotBlock) => {
+const restoreBlock = async (parent: { uid: string }, block: SnapshotBlock, restored: Set<string>) => {
   await window.roamAlphaAPI.deleteBlock({
     block,
   });
-  window.roamAlphaAPI.createBlock({
-    location: {
-      "parent-uid": parent.uid,
-      order: block.order,
-    },
-    block: {
-      ...block,
-      "children-view-type": block["view-type"],
-    },
-  });
+  try {
+    if (!restored.has(block.uid)) {
+      await window.roamAlphaAPI.createBlock({
+        location: {
+          "parent-uid": parent.uid,
+          order: block.order,
+        },
+        block: {
+          ...block,
+          "children-view-type": block["view-type"],
+        },
+      });
+      restored.add(block.uid);
+    }
+
+  } catch (e) {
+    restored.add(block.uid)
+    console.warn(e, parent, block, ' _ ', restored)
+  }
+
   if (block.children) {
-    block.children.forEach((grandChild) => restoreBlock(block, grandChild));
+    block.children.forEach((grandChild) => restoreBlock(block, grandChild, restored));
   }
 };
 
@@ -720,7 +730,7 @@ const restorePageByJson = async (json: Snapshot) => {
   });
 
   json.children.forEach((child) => {
-    restoreBlock(json, child);
+    restoreBlock(json, child, new Set());
   });
 };
 const restorePage = (pageUid: string, json: Snapshot) => {
@@ -756,23 +766,15 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
       });
     }
     if (diff.block.added) {
+      const createdBlocks = new Set<string>()
       diff.block.added
         .sort((a, b) => a.parentUids.length - b.parentUids.length)
-        .forEach((block) => {
+        .forEach(async (block) => {
           restoreBlock(
             { uid: block.parentUids[block.parentUids.length - 1] },
-            block
+            block,
+            createdBlocks
           );
-          window.roamAlphaAPI.createBlock({
-            block: {
-              ...block,
-              "children-view-type": block["view-type"],
-            },
-            location: {
-              "parent-uid": block.parentUids[block.parentUids.length - 1],
-              order: block.order,
-            },
-          });
         });
     }
     if (diff.block.deleted) {
