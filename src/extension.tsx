@@ -827,6 +827,7 @@ const startLoop = () => {
   });
 };
 
+const newRecordSet = new Set<string>()
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
 
   if (!SNAP_SHOT_MAP.has(uid))
@@ -837,7 +838,8 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
     });
   console.log(await hasRecordInServer(uid), '---', uid)
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
-  if (!await hasRecordInServer(uid)) {
+  if (!await hasRecordInServer(uid) && !newRecordSet.has(uid)) {
+    newRecordSet.add(uid);
     recordPage({ uid })
   }
 };

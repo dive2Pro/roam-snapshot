@@ -25,6 +25,7 @@ class LocalCache {
 
 class RemoteCache {
   async add(key: string, value: any) {
+    await API.settings.set(key, 1); // 关闭写入通道, 因为已经进入写入流程了, 避免重复写入
     const oldUrl = API.settings.get(key) as string;
 
     if (oldUrl) {
@@ -94,7 +95,7 @@ async function saveToServer(key: string, value: any) {
   // const toast = Toaster.create({
   //   position: 'top-left'
   // });
-  const title = window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", key])[":node/title"]
+  // const title = window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", key])[":node/title"]
   // @ts-ignore
   const downloadUrl = await cache.add(getKey(key), value)
 
@@ -119,6 +120,7 @@ export async function getPageSnapshot(
 
     console.log(result, ' --- result')
     if (!result) {
+      API.settings.set(getKey(page), undefined);
       return [];
     }
     if (typeof result === 'string')
