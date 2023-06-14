@@ -607,17 +607,32 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         </div>
       </div>
       <Alert
-        cancelButtonText="Close"
-        confirmButtonText="Restore"
-        intent="success"
+        cancelButtonText="Cancel"
+        confirmButtonText="Continue"
+        canEscapeKeyCancel
+        canOutsideClickCancel
+        intent="warning"
         isOpen={isAlerting}
         onConfirm={() => {
           restore(list[index].json);
         }}
         loading={restoring}
         onClose={() => setAlerting(false)}
+        icon="warning-sign"
       >
-        <p>Are you sure you would like to restore to this version?</p>
+        <>
+          <h4>
+            Restoring blocks will override blocks on the page.
+          </h4>
+
+          The <strong>back references</strong> of the overridden blocks will no longer be valid and will be replaced by the text in the referenced blocks.
+          <br />
+          <p>
+            Are you sure you want to continue?
+          </p>
+        </>
+
+
       </Alert>
       <Alert
         cancelButtonText="Close"
