@@ -684,10 +684,10 @@ const getFullPageJson = (uid: string) => {
   ) as unknown as Snapshot;
 };
 
-const recordPage = (item: { uid: string }) => {
+const recordPage = async (item: { uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
   const json = getFullPageJson(item.uid);
-  savePageSnapshot(item.uid, json);
+  await savePageSnapshot(item.uid, json);
 };
 
 const cleanPage = (pageUid: string) => {

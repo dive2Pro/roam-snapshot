@@ -28,21 +28,15 @@ class RemoteCache {
     await API.settings.set(key, 1); // 关闭写入通道, 因为已经进入写入流程了, 避免重复写入
     const oldUrl = API.settings.get(key) as string;
 
-    if (oldUrl) {
-      try {
-        await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
-          { url: oldUrl }
-        )
-        console.log(`deleting: ${oldUrl}`)
-      } catch (e) {
-
-      }
-
-    }
-
     const url = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.upload({ file: new File([JSON.stringify(value)], `${key}.json`, { type: "application/json" }), toast: { hide: true } })
     console.log(url, ' = url')
     await API.settings.set(key, url);
+    if (oldUrl) {
+      (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
+        { url: oldUrl }
+      )
+      console.log(`deleting: ${oldUrl}`)
+    }
     return url
   }
   async get(key: string) {
