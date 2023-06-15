@@ -25,8 +25,8 @@ class LocalCache {
 
 class RemoteCache {
   async add(key: string, value: any) {
-    await API.settings.set(key, 1); // 关闭写入通道, 因为已经进入写入流程了, 避免重复写入
     const oldUrl = API.settings.get(key) as string;
+    await API.settings.set(key, 1); // 关闭写入通道, 因为已经进入写入流程了, 避免重复写入
 
     const url = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.upload({ file: new File([JSON.stringify(value)], `${key}.json`, { type: "application/json" }), toast: { hide: true } })
     console.log(url, ' = url')
@@ -45,10 +45,8 @@ class RemoteCache {
       return undefined
     }
 
-    const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
-    console.timeEnd("LOADING")
-
     try {
+      const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
       return JSON.parse(await file.text())
     } catch (e) {
       return undefined
@@ -112,7 +110,7 @@ export async function getPageSnapshot(
     console.time("LOADING")
     const result = await cache.get(getKey(page));
 
-    console.log(result, ' --- result')
+    console.log(result, ' --- result --- ', getKey(page))
     if (!result) {
       API.settings.set(getKey(page), undefined);
       return [];
@@ -123,6 +121,8 @@ export async function getPageSnapshot(
   } catch (e) {
     console.log(e, ' --')
     return [];
+  } finally {
+    console.timeEnd("LOADING")
   }
 }
 export const keys = <T extends {}>(obj: T) => {
