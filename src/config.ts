@@ -1,4 +1,4 @@
-import { Toaster } from "@blueprintjs/core";
+import { Dialog, Toaster } from "@blueprintjs/core";
 import { openDB } from 'idb'
 
 const dbPromise = openDB("rm-history", 1, {
@@ -49,6 +49,7 @@ class RemoteCache {
       const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
       return JSON.parse(await file.text())
     } catch (e) {
+      alert(e.message)
       return undefined
     }
   }
@@ -112,7 +113,8 @@ export async function getPageSnapshot(
 
     console.log(result, ' --- result --- ', getKey(page))
     if (!result) {
-      API.settings.set(getKey(page), undefined);
+      // 不能写空, 有可能 result = undefined 是因为数据请求为空
+      // API.settings.set(getKey(page), undefined);
       return [];
     }
     if (typeof result === 'string')
