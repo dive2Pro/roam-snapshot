@@ -23,14 +23,32 @@ class LocalCache {
   }
 }
 
+// incase of uninstall plugin occasionally
+class FileUrlCache  {
+  async add(key: string, url: string) {
+    await API.settings.set(key, url);
+    localStorage.setItem(key, url)
+  }
+
+  async get(key: string) {
+    const remoteValue = API.settings.get(key) as string;
+    const localValue = localStorage.getItem(key);
+
+    return remoteValue || localValue
+
+  }
+}
+
+const fileUrlCache = new FileUrlCache();
+
 class RemoteCache {
   async add(key: string, value: any) {
-    const oldUrl = API.settings.get(key) as string;
+    const oldUrl = await fileUrlCache.get(key);
     await API.settings.set(key, 1); // 关闭写入通道, 因为已经进入写入流程了, 避免重复写入
 
     const url = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.upload({ file: new File([JSON.stringify(value)], `${key}.json`, { type: "application/json" }), toast: { hide: true } })
     console.log(url, ' = url')
-    await API.settings.set(key, url);
+    await fileUrlCache.add(key, url)
     if (oldUrl) {
       (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
         { url: oldUrl }
@@ -40,7 +58,7 @@ class RemoteCache {
     return url
   }
   async get(key: string) {
-    const url = API.settings.get(key) as string;
+    const url = await fileUrlCache.get(key);
     if (!url) {
       return undefined
     }
@@ -50,6 +68,7 @@ class RemoteCache {
       return JSON.parse(await file.text())
     } catch (e) {
       alert(e.message)
+      console.warn(e)
       return undefined
     }
   }
