@@ -118,7 +118,7 @@ async function saveToServer(key: string, value: any) {
 
 
 export async function hasRecordInServer(key: string) {
-  const r = await API.settings.get(getKey(key))
+  const r = await fileUrlCache.get(getKey(key))
   return !!r
 }
 
