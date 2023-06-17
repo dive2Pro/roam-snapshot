@@ -434,11 +434,27 @@ const DiffOpen: FC<{
   );
 };
 const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
-  const diffResult = useMemo(() => {
-    return diff.diff(props.diff.old, props.diff.now);
+  const [diffResult, setDiffResult] = useState<ReturnType<typeof diff.diff>>();
+  const [diffing, setDiffing] = useState(false)
+  useEffect(() => {
+    const process = async () => {
+      setDiffing(true)
+      await delay(100)
+      const result = await diff.diff(props.diff.old, props.diff.now);
+
+      setDiffResult(result)
+      setDiffing(false)
+    }
+    process();
+
     // return JsDiff.diffString(props.diff.old, props.diff.now);
   }, [props.diff]);
+
+  if (diffing || !diffResult) {
+    return <div>Diffing...</div>;
+  }
   console.log(diffResult.toString(), " string diff");
+
   return (
     <div
       dangerouslySetInnerHTML={{
