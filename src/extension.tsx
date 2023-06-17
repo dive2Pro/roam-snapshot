@@ -503,14 +503,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [isLoading, setLoading] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
   let pageUidRef = useRef("");
-  const mount = async () => {
-    const pageUid = await getCurrentPageFromApi();
-    pageUidRef.current = pageUid;
-    setLoading(true)
-    const snapList = (await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time)
-    setList(snapList);
-    setLoading(false)
-
+  const group = (snapList: ITEM[]) => {
     const groupSnapListByDay = (list: ITEM[]) => {
       const result: Record<string, TreeNodeInfo<ITEM>> = {};
       list.forEach((item, index) => {
@@ -532,7 +525,17 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       })
       return Object.values(result)
     }
+    console.log(snapList, " snapList");
     setTreeContents(groupSnapListByDay(snapList))
+  }
+  const mount = async () => {
+    const pageUid = await getCurrentPageFromApi();
+    pageUidRef.current = pageUid;
+    setLoading(true)
+    const snapList = (await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time)
+    setList(snapList);
+    setLoading(false)
+    group(snapList)
 
   };
   useEffect(() => {
@@ -540,11 +543,12 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
   }, []);
   const restore = async (json: Snapshot) => {
     setRestoring(true);
-    await delay();
+    await delay(100);
     const diff: Diff = {};
     diffSnapshots(diff, json, getFullPageJson(pageUidRef.current));
     restorePageByDiff(json.uid, diff);
     setRestoring(false);
+    setAlerting(false)
     await delay();
     props.onChange(false);
   };
@@ -612,13 +616,13 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
                 setAlerting(true);
               }}
             />
-            {/* <Button
+            <Button
               text="Delete"
               intent="danger"
               onClick={() => {
                 setDeleting(true);
               }}
-            /> */}
+            />
           </ButtonGroup>
         </div>
       </div>
@@ -633,7 +637,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
           restore(list[index].json);
         }}
         loading={restoring}
-        onClose={() => setAlerting(false)}
+        onClose={(confirm) => !confirm && setAlerting(false)}
         icon="warning-sign"
       >
         <>
@@ -653,18 +657,30 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       <Alert
         cancelButtonText="Close"
         confirmButtonText="Delete"
+        canOutsideClickCancel
+        canEscapeKeyCancel
         intent="danger"
         isOpen={isDeleting}
         onConfirm={async () => {
           console.log("___________________")
-          await deletePageSnapshot(pageUidRef.current, list[index].time);
-          mount();
+          setRestoring(true)
+          // await delay(100)
+          const result = await deletePageSnapshot(pageUidRef.current, list[index].time);
+          setList(result)
+          setIndex(0)
+          group(result.sort((a, b) => b.time - a.time))
+          setRestoring(false)
+          setDeleting(false)
         }}
         icon="trash"
         loading={restoring}
-        onClose={() => setDeleting(false)}
+        onClose={(confirm) => {
+          if(!confirm) {
+            setDeleting(false);
+          }
+        }}
       >
-        <p>Are you sure you want to delete this item?</p>
+        <p>Are you sure you want to delete this record?</p>
       </Alert>
     </div>
   );

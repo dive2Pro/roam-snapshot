@@ -244,7 +244,8 @@ export async function deletePageSnapshot(pageUid: string, time: number) {
 
   const filtered = sorted.filter((item) => item.time !== time);
   console.log(pageUid, sorted, filtered, ' -----@@----');
-  await saveToServer(pageUid, (filtered));
+  await saveToServer(pageUid, filtered);
+  return filtered
 }
 
 export async function diffSnapshot(pageUid: string, snapshots: { json: Snapshot, time: number }[], now: number, old: number) {
