@@ -857,7 +857,7 @@ const getPageUidFromDom = async (el: HTMLElement) => {
 };
 const mutationTrigger = async (mutation: MutationRecord) => {
   const uid = await getPageUidFromDom(mutation.target as HTMLElement);
-  // console.log(mutation.target, " --- ", uid);
+  console.log(mutation.target, " --- ", uid);
   if (uid) {
     triggerSnapshotRecordByPageUid(uid);
   }
@@ -880,14 +880,60 @@ const mutationAttributeTrigger = async (mutation: MutationRecord) => {
   }
 };
 
+
+function simpleDebounce(fn: Function, delay = 500) {
+  let timer = setTimeout(() => {
+
+  }, delay);
+  return (...args: any[]) => {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn(...args)
+    }, delay)
+  }
+}
+
+const codeBlockTrigger = simpleDebounce(mutationTrigger)
+const codeBlockAttributeTrigger = simpleDebounce(mutationAttributeTrigger)
+
+function checkCodeBlocks(mutation: MutationRecord) {
+  const el = mutation.target as HTMLElement;
+  // 非代码块走普通逻辑
+  // 但是代码块从 editing 变成 preview 也会走这条逻辑
+  if (!el.closest(".rm-code-block") || !el.closest(".cm-editor")) {
+    if (!el.closest(".roam-block")) {
+      trigger();
+      return true;
+    }
+    return false;
+  }
+  trigger();
+  return true;
+  function trigger() {
+    if (mutation.type === 'childList') {
+      codeBlockTrigger(mutation);
+    } else if (mutation.type === 'attributes') {
+      codeBlockAttributeTrigger(mutation)
+    }
+  }
+}
+
 function listenToChange() {
   const targetNode = document.getElementById("app");
   const config = { childList: true, subtree: true, attributes: true };
   const observer = new MutationObserver((mutationList, observer) => {
     for (const mutation of mutationList) {
       if (mutation.type === "childList" && !isRestoring) {
+        if (checkCodeBlocks(mutation)) {
+          return;
+        }
+        // console.log(mutation.target, mutation)
         mutationTrigger(mutation);
       } else if (mutation.type === "attributes") {
+        if (checkCodeBlocks(mutation)) {
+          return;
+        }
+        // console.log('attribute: ', (mutation.target as HTMLElement).closest(".rm-code-block"))
         mutationAttributeTrigger(mutation);
       }
     }

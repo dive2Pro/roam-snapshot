@@ -1,4 +1,3 @@
-import { Dialog, Toaster } from "@blueprintjs/core";
 import { openDB } from 'idb'
 
 const dbPromise = openDB("rm-history", 1, {
