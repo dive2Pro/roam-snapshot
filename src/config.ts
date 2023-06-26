@@ -48,7 +48,7 @@ class RemoteCache {
     const url = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.upload({ file: new File([JSON.stringify(value)], `${key}.json`, { type: "application/json" }), toast: { hide: true } })
     console.log(url, ' = url')
     await fileUrlCache.add(key, url)
-    if (oldUrl) {
+    if (oldUrl && url) {
       (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
         { url: oldUrl }
       )
@@ -66,8 +66,6 @@ class RemoteCache {
       const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
       return JSON.parse(await file.text())
     } catch (e) {
-
-      console.warn(e)
       return undefined
     }
   }

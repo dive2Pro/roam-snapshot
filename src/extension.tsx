@@ -9,9 +9,11 @@ import {
   Classes,
   TreeNodeInfo,
   Spinner,
-  SpinnerSize
+  SpinnerSize,
+  Tooltip
 } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useRef, useState } from "react";
+import ReactDOM from 'react-dom';
 import {
   deletePageSnapshot,
   diffSnapshot,
@@ -675,7 +677,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         icon="trash"
         loading={restoring}
         onClose={(confirm) => {
-          if(!confirm) {
+          if (!confirm) {
             setDeleting(false);
           }
         }}
@@ -978,9 +980,10 @@ function listenToChange() {
   });
 }
 
+
 export function initExtension() {
-  console.log("init extension");
   startLoop();
+  initBottomOperators();
   listenToChange();
 }
 
@@ -998,4 +1001,51 @@ function forEachNode(nodes: TreeNodeInfo[] | undefined, callback: (node: TreeNod
     callback(node);
     forEachNode(node.childNodes, callback);
   }
+}
+
+function BottomOperators() {
+  return <ButtonGroup fill>
+    <Tooltip content={"info"}
+        
+    >
+      <Button
+        style={{
+          background: '#202B33',
+          outline: 'none'
+        }}
+        small
+        icon={
+          <Icon icon="ring" intent="success" />
+        }
+      />
+    </Tooltip>
+    <Tooltip content={"Trash"}
+
+    >
+      <Button
+        small
+        style={{
+          background: '#202B33',
+          outline: 'none'
+
+        }}
+        className="bp3-dark"
+
+        icon="trash" />
+    </Tooltip>
+
+  </ButtonGroup>
+}
+
+function initBottomOperators() {
+  const logo = document.querySelector("#roam-sidebar-logo");
+  const el = document.createElement("div");
+
+  logo.parentElement.insertBefore(el, logo);
+
+  ReactDOM.render(<BottomOperators />, el)
+
+  extension_helper.on_uninstall(() => {
+    el.remove();
+  })
 }
