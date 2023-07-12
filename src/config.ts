@@ -66,7 +66,7 @@ class RemoteCache {
       const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
       return JSON.parse(await file.text())
     } catch (e) {
-      alert(e.message)
+
       console.warn(e)
       return undefined
     }
