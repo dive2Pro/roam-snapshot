@@ -27,3 +27,7 @@ export const appendToTopbar = (name: string) => {
   }
   return checkForButton;
 };
+
+
+export const minute_1 = 10 * 1 * 60;
+const minute_10 = minute_1 * 10;

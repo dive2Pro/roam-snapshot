@@ -1,6 +1,6 @@
 {
   "name": "roam-page-history",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "main": "extension.js",
   "scripts": {
     "dev": "concurrently \"tsc --watch\" \"NODE_ENV=dev vite build --watch\"",

@@ -1,40 +1,42 @@
-import { openDB } from 'idb'
+import { Toast, Toaster } from "@blueprintjs/core";
+import { openDB } from "idb";
 
 const dbPromise = openDB("rm-history", 1, {
   upgrade(db) {
-    db.createObjectStore(CONSTANTS.DB_STORE)
+    db.createObjectStore(CONSTANTS.DB_STORE);
   },
-
-})
+});
 
 const CONSTANTS = {
-  PAGE_INTERVAL: 'page-interval',
-  DB_STORE: 'page-history'
-}
+  PAGE_INTERVAL: "page-interval",
+  DB_STORE: "page-history",
+  VERSION: "version",
+};
 
 class LocalCache {
   async add(key: string, value: any) {
     const r = await (await dbPromise).put(CONSTANTS.DB_STORE, value, key);
-    return r.toString()
+    return r.toString();
   }
   async get(key: string) {
+    // 兼容 v1 , 如果本地没有,
+    console.log(key, " ---");
     return (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
   }
 }
 
 // incase of uninstall plugin occasionally
-class FileUrlCache  {
+class FileUrlCache {
   async add(key: string, url: string) {
     await API.settings.set(key, url);
-    localStorage.setItem(key, url)
+    localStorage.setItem(key, url);
   }
 
   async get(key: string) {
     const remoteValue = API.settings.get(key) as string;
     const localValue = localStorage.getItem(key);
 
-    return remoteValue || localValue
-
+    return remoteValue || localValue;
   }
 }
 
@@ -45,102 +47,176 @@ class RemoteCache {
     const oldUrl = await fileUrlCache.get(key);
     await API.settings.set(key, 1); // 关闭写入通道, 因为已经进入写入流程了, 避免重复写入
 
-    const url = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.upload({ file: new File([JSON.stringify(value)], `${key}.json`, { type: "application/json" }), toast: { hide: true } })
-    console.log(url, ' = url')
-    await fileUrlCache.add(key, url)
+    const url = await (
+      window.roamAlphaAPI as unknown as RoamExtensionAPI
+    ).file.upload({
+      file: new File([JSON.stringify(value)], `${key}.json`, {
+        type: "application/json",
+      }),
+      toast: { hide: true },
+    });
+    console.log(url, " = url");
+    await fileUrlCache.add(key, url);
     if (oldUrl && url) {
-      (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete(
-        { url: oldUrl }
-      )
-      console.log(`deleting: ${oldUrl}`)
+      (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete({
+        url: oldUrl,
+      });
+      console.log(`deleting: ${oldUrl}`);
     }
-    return url
+    return url;
   }
   async get(key: string) {
     const url = await fileUrlCache.get(key);
     if (!url) {
-      return undefined
+      return undefined;
     }
 
     try {
-      const file = await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.get({ url })
-      return JSON.parse(await file.text())
+      const file = await (
+        window.roamAlphaAPI as unknown as RoamExtensionAPI
+      ).file.get({ url });
+      return JSON.parse(await file.text());
     } catch (e) {
-      return undefined
+      console.warn(e, key, url);
+      return undefined;
     }
   }
 }
 
-const cache = new RemoteCache()
+const remoteCache = new RemoteCache();
+const cache = new LocalCache();
+
+function markHasUpgrade() {
+  API.settings.set(CONSTANTS.VERSION, 1);
+}
+function hasUpgrade(v = 1) {
+  return API.settings.get(CONSTANTS.VERSION) === v;
+}
+
+// 创建一个兼容方法
+async function compatial() {
+  if (hasUpgrade()) {
+    // return;
+  }
+
+  const savedObj = getAllSettings();
+  // console.log("savedKeys", savedKeys);
+  if (savedObj.length <= 0) {
+    markHasUpgrade();
+    return;
+  }
+  const toaster = Toaster.create({});
+  const toastKey = toaster.show({
+    message: `Upgrading Page History...`,
+    intent: "success",
+    timeout: 0,
+  });
+  try {
+    await Promise.all(
+      savedObj
+        .map(([k, url]) => {
+          return new Promise(async (resolve) => {
+            (window.roamAlphaAPI as unknown as RoamExtensionAPI).file
+              .get({ url })
+              .then(async (res) => {
+                return JSON.parse(await res.text());
+              })
+              .then((json) => {
+                cache.add(k, json);
+              }).finally(() => {
+                resolve(1);
+              });
+          });
+        })
+    );
+  } catch (e) {
+  } finally {
+    markHasUpgrade();
+    toaster.dismiss(toastKey);
+  }
+
+  function getAllSettings() {
+    const allSettings = API.settings.getAll();
+    const pageHistories = Object.keys(allSettings)
+      .filter((key) => {
+        return isSnapshotKey(key);
+      })
+      .map((k) => [k, API.settings.get(k) as string]);
+   
+    return [
+      [
+        "rm-history-08-10-2023",
+        "https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fthoughtfull%2F5N7aGHUhnc.json?alt=media&token=da6fc56b-a31d-4a62-afdd-ad94424a235b",
+      ],
+    ];
+  }
+}
 
 let API: RoamExtensionAPI;
 export function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
   API.settings.panel.create({
-    tabTitle: 'Page History',
+    tabTitle: "Page History",
     settings: [
       {
         id: CONSTANTS.PAGE_INTERVAL,
-        name: 'Time Interval',
-        description: 'How long should you wait before taking a snapshot of a page after starting to edit it (The unit is minutes)',
+        name: "Time Interval",
+        description:
+          "How long should you wait before taking a snapshot of a page after starting to edit it (The unit is minutes)",
         action: {
           type: "input",
           placeholder: "10",
-        }
-      }
-    ]
-  })
+        },
+      },
+    ],
+  });
+  compatial();
 }
 
 export function getIntervalTime() {
-  return +API.settings.get(CONSTANTS.PAGE_INTERVAL) || 10
+  return +API.settings.get(CONSTANTS.PAGE_INTERVAL) || 10;
 }
 
 const getKey = (key: string) => {
-  return `rm-history-${key}`
-}
+  return isSnapshotKey(key) ? key : `rm-history-${key}`;
+};
+
+const isSnapshotKey = (k: string) => {
+  return k.startsWith(`rm-history-`);
+};
 
 async function saveToServer(key: string, value: any) {
-  // const toast = Toaster.create({
-  //   position: 'top-left'
-  // });
-  // const title = window.roamAlphaAPI.pull(`[:node/title]`, [":block/uid", key])[":node/title"]
-  // @ts-ignore
-  const downloadUrl = await cache.add(getKey(key), value)
-
-  // const r = localStorage.setItem(getKey(key), value);
-  // cache.add(getKey(key), value)
-  console.log(' - save result', downloadUrl)
+  const downloadUrl = await cache.add(getKey(key), value);
 }
 
+async function getFromServer(key: string) {
+  return cache.get(getKey(key));
+}
 
 export async function hasRecordInServer(key: string) {
-  const r = await fileUrlCache.get(getKey(key))
-  return !!r
+  const r = await fileUrlCache.get(getKey(key));
+  return !!r;
 }
 
 export async function getPageSnapshot(
   page: string
 ): Promise<{ json: Snapshot; time: number }[]> {
-
   try {
-    console.time("LOADING")
-    const result = await cache.get(getKey(page));
-
-    console.log(result, ' --- result --- ', getKey(page))
+    console.time("LOADING");
+    const result = await getFromServer(page);
+    console.log(result, " --- result --- ", getKey(page));
     if (!result) {
       // 不能写空, 有可能 result = undefined 是因为数据请求为空
       // API.settings.set(getKey(page), undefined);
       return [];
     }
-    if (typeof result === 'string')
-      return JSON.parse(result as string) as [];
+    if (typeof result === "string") return JSON.parse(result as string) as [];
     return result;
   } catch (e) {
-    console.log(e, ' --')
+    console.log(e, " --");
     return [];
   } finally {
-    console.timeEnd("LOADING")
+    console.timeEnd("LOADING");
   }
 }
 export const keys = <T extends {}>(obj: T) => {
@@ -233,7 +309,6 @@ export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
   saveToServer(pageUid, sorted);
 }
 
-
 export async function deletePageSnapshot(pageUid: string, time: number) {
   const old = await getPageSnapshot(pageUid);
   const sorted = old.sort((a, b) => {
@@ -241,12 +316,17 @@ export async function deletePageSnapshot(pageUid: string, time: number) {
   });
 
   const filtered = sorted.filter((item) => item.time !== time);
-  console.log(pageUid, sorted, filtered, ' -----@@----');
+  console.log(pageUid, sorted, filtered, " -----@@----");
   await saveToServer(pageUid, filtered);
-  return filtered
+  return filtered;
 }
 
-export async function diffSnapshot(pageUid: string, snapshots: { json: Snapshot, time: number }[], now: number, old: number) {
+export async function diffSnapshot(
+  pageUid: string,
+  snapshots: { json: Snapshot; time: number }[],
+  now: number,
+  old: number
+) {
   // const snapshots = await getPageSnapshot(pageUid);
   if (!snapshots.length) {
     return undefined;

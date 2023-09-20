@@ -10,9 +10,11 @@ import {
   TreeNodeInfo,
   Spinner,
   SpinnerSize,
-  Tooltip
+  Tooltip,
+  Dialog,
+  Divider
 } from "@blueprintjs/core";
-import React, { FC, useEffect, useMemo, useRef, useState } from "react";
+import React, { FC, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import ReactDOM from 'react-dom';
 import {
   deletePageSnapshot,
@@ -25,13 +27,14 @@ import {
   savePageSnapshot,
   sortByOrder,
 } from "./config";
-import { extension_helper } from "./helper";
+import { extension_helper, minute_1 } from "./helper";
 import Dayjs from "dayjs";
 import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
 import dayjs from "dayjs";
+import { DIALOG_BODY, DIALOG_HEADER } from "@blueprintjs/core/lib/esm/common/classes";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -840,8 +843,6 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   }, 500)
 };
 
-const minute_1 = 1000 * 1 * 60;
-const minute_10 = minute_1 * 10;
 
 let isRestoring = false;
 const startLoop = () => {
@@ -983,7 +984,7 @@ function listenToChange() {
 
 export function initExtension() {
   startLoop();
-  initBottomOperators();
+  // initBottomOperators();
   listenToChange();
 }
 
@@ -1003,25 +1004,80 @@ function forEachNode(nodes: TreeNodeInfo[] | undefined, callback: (node: TreeNod
   }
 }
 
+
+function Snapping() {
+  const forceUpdate = useReducer(a => a + 1, 0)[1];
+
+  const content = [...SNAP_SHOT_MAP.entries()].map(([key, info]) => {
+    return <div>
+      <div>
+        {key}: {info.start} - {info.end}
+      </div>
+      <ButtonGroup >
+        <Button
+          small
+          onClick={() => {
+          SNAP_SHOT_MAP.delete(key);
+          forceUpdate();
+        }}>Remove</Button>
+        <Divider />
+        <Button small intent="primary" onClick={() => {
+          SNAP_SHOT_MAP.delete(key);
+          recordPage(info);
+          forceUpdate();
+        }}>Writing</Button>
+
+      </ButtonGroup>
+    </div>
+  })
+
+  return <div>
+    {content}
+  </div>
+}
+
 function BottomOperators() {
-  return <ButtonGroup fill>
-    <Tooltip content={"info"}
-        
+  const forceUpdate = useReducer(a => a + 1, 0)[1];
+  const [infoShowing, setInfoShowing] = useState(false)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      forceUpdate();
+    }, 1000)
+    return () => {
+      clearInterval(timer)
+    }
+  }, []);
+  const isSnapping = SNAP_SHOT_MAP.size > 0;
+  return <>
+    <Dialog
+      isOpen={infoShowing}
+      isCloseButtonShown
+      title="Page History Info"
+      canEscapeKeyClose
+      canOutsideClickClose
+      onClose={() => setInfoShowing(false)}
+      shouldReturnFocusOnClose
     >
+      <div className={DIALOG_BODY}>
+        <Snapping />
+      </div>
+    </Dialog>
+    <ButtonGroup fill>
+
       <Button
+        onClick={() => {
+          setInfoShowing(true)
+        }}
         style={{
           background: '#202B33',
           outline: 'none'
         }}
         small
         icon={
-          <Icon icon="ring" intent="success" />
+          <Icon icon="ring" intent={isSnapping ? "warning" : "none"} />
         }
       />
-    </Tooltip>
-    <Tooltip content={"Trash"}
 
-    >
       <Button
         small
         style={{
@@ -1032,9 +1088,9 @@ function BottomOperators() {
         className="bp3-dark"
 
         icon="trash" />
-    </Tooltip>
 
-  </ButtonGroup>
+    </ButtonGroup>
+  </>
 }
 
 function initBottomOperators() {
