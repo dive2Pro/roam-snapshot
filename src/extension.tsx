@@ -12,10 +12,18 @@ import {
   SpinnerSize,
   Tooltip,
   Dialog,
-  Divider
+  Divider,
+  Popover,
 } from "@blueprintjs/core";
-import React, { FC, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import ReactDOM from 'react-dom';
+import React, {
+  FC,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import ReactDOM from "react-dom";
 import {
   deletePageSnapshot,
   diffSnapshot,
@@ -25,6 +33,7 @@ import {
   hasRecordInServer,
   keys,
   savePageSnapshot,
+  saveToServer,
   sortByOrder,
 } from "./config";
 import { extension_helper, minute_1 } from "./helper";
@@ -34,7 +43,11 @@ Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
 import dayjs from "dayjs";
-import { DIALOG_BODY, DIALOG_HEADER } from "@blueprintjs/core/lib/esm/common/classes";
+import {
+  DIALOG_BODY,
+  DIALOG_HEADER,
+} from "@blueprintjs/core/lib/esm/common/classes";
+import { onCacheChangeEvent } from "./event";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -132,13 +145,13 @@ function Block(props: {
             ...child,
             ...(props.data.added
               ? {
-                added: true,
-              }
+                  added: true,
+                }
               : {}),
             ...(props.data.deleted
               ? {
-                deleted: true,
-              }
+                  deleted: true,
+                }
               : {}),
           }}
           level={props.level + 1}
@@ -173,9 +186,11 @@ function Block(props: {
   }
   return (
     <div
-      className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
-        } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${props.data.deleted ? CONSTANTS.css.diff.block.del : ""
-        }
+      className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
+        props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
+      } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${
+        props.data.deleted ? CONSTANTS.css.diff.block.del : ""
+      }
         `}
     >
       {orderClazz}
@@ -185,10 +200,11 @@ function Block(props: {
             <DiffOpen
               diff={diffOpen}
               onChange={setState}
-              clazz={` ${open ? "rm-caret-open" : "rm-caret-closed"} ${props.viewType === "document" && props.data.open
-                ? "rm-caret-showing"
-                : ""
-                } ${diffOpen ? `diff-add` : ""} 
+              clazz={` ${open ? "rm-caret-open" : "rm-caret-closed"} ${
+                props.viewType === "document" && props.data.open
+                  ? "rm-caret-showing"
+                  : ""
+              } ${diffOpen ? `diff-add` : ""} 
               ${open ? "bp3-icon-caret-down" : "bp3-icon-caret-down"}
                 `}
               visible={
@@ -217,8 +233,9 @@ function Block(props: {
               `}
                 >
                   <span
-                    className={`rm-bullet__inner--numbered ${diffViewType ? CONSTANTS.css.diff.content.add : ""
-                      }`}
+                    className={`rm-bullet__inner--numbered ${
+                      diffViewType ? CONSTANTS.css.diff.content.add : ""
+                    }`}
                   >
                     {props.data.order + 1}.
                   </span>
@@ -239,8 +256,9 @@ function Block(props: {
           style={{
             textAlign: props.data["text-align"],
           }}
-          className={`rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text ${diffHeading || diffTextAlign ? CONSTANTS.css.diff.block.add : ""
-            }`}
+          className={`rm-block__input rm-block__input--view roam-block dont-unfocus-block hoverparent rm-block-text ${
+            diffHeading || diffTextAlign ? CONSTANTS.css.diff.block.add : ""
+          }`}
         >
           <PreviewTitle
             diff={(() => {
@@ -257,8 +275,9 @@ function Block(props: {
             })()}
           >
             <span
-              className={`${props.data.added ? CONSTANTS.css.diff.content.add : ""
-                }
+              className={`${
+                props.data.added ? CONSTANTS.css.diff.content.add : ""
+              }
               ${props.data.deleted ? CONSTANTS.css.diff.content.del : ""}
                 `}
             >
@@ -268,8 +287,9 @@ function Block(props: {
         </div>
       </div>
       <div
-        className={`rm-block-children rm-block__children rm-level-${props.level
-          } ${diffViewType ? CONSTANTS.css.diff.block.add : ""}`}
+        className={`rm-block-children rm-block__children rm-level-${
+          props.level
+        } ${diffViewType ? CONSTANTS.css.diff.block.add : ""}`}
       >
         <div className="rm-multibar"></div>
         {children}
@@ -279,7 +299,10 @@ function Block(props: {
 }
 
 function PagePreview(props: {
-  data: Snapshot; index: number; uid: string, list: ITEM[]
+  data: Snapshot;
+  index: number;
+  uid: string;
+  list: ITEM[];
 }) {
   const [state, setState] = useState<{ diff?: Diff }>({});
   const [loading, setLoading] = useState(false);
@@ -287,9 +310,16 @@ function PagePreview(props: {
     if (props.data) {
       const doAction = async () => {
         setLoading(true);
-        setState({ diff: await diffSnapshot(props.uid, props.list, props.index, props.index + 1) });
+        setState({
+          diff: await diffSnapshot(
+            props.uid,
+            props.list,
+            props.index,
+            props.index + 1
+          ),
+        });
         setLoading(false);
-      }
+      };
       doAction();
     }
   }, [props.data, props.index]);
@@ -297,16 +327,16 @@ function PagePreview(props: {
   return (
     <div className="rm-snapshot-view">
       {loading ? (
-        <div className="flex-center">
-          Loading...
-        </div>
+        <div className="flex-center">Loading...</div>
       ) : (
         <>
           {!props?.data ? (
             <div className="rm-snapshot-view-empty">
               <Icon icon="outdated" size={30}></Icon>
               <div style={{ maxWidth: 340 }}>
-                This page does not have any snapshots yet. Allow up to {getIntervalTime()} minutes for the first snapshot to be generated.
+                This page does not have any snapshots yet. Allow up to{" "}
+                {getIntervalTime()} minutes for the first snapshot to be
+                generated.
               </div>
             </div>
           ) : (
@@ -440,16 +470,16 @@ const DiffOpen: FC<{
 };
 const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
   const [diffResult, setDiffResult] = useState<ReturnType<typeof diff.diff>>();
-  const [diffing, setDiffing] = useState(false)
+  const [diffing, setDiffing] = useState(false);
   useEffect(() => {
     const process = async () => {
-      setDiffing(true)
-      await delay(100)
+      setDiffing(true);
+      await delay(100);
       const result = await diff.diff(props.diff.old, props.diff.now);
 
-      setDiffResult(result)
-      setDiffing(false)
-    }
+      setDiffResult(result);
+      setDiffing(false);
+    };
     process();
 
     // return JsDiff.diffString(props.diff.old, props.diff.now);
@@ -495,14 +525,14 @@ const dayFormat = (time: number) => {
     lastWeek: "YYYY/MM/DD", // Last week ( Last Monday at 2:30 AM )
     sameElse: "YYYY/MM/DD", // Everything else ( 17/10/2011 )
   });
-}
+};
 
 const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function Extension(props: { onChange: (b: boolean) => void }) {
   const [index, setIndex] = useState(0);
   const [list, setList] = useState<ITEM[]>([]);
-  const [treeContents, setTreeContents] = useState<TreeNodeInfo<ITEM>[]>()
+  const [treeContents, setTreeContents] = useState<TreeNodeInfo<ITEM>[]>();
   const [restoring, setRestoring] = useState(false);
   const [isAlerting, setAlerting] = useState(false);
   const [isLoading, setLoading] = useState(false);
@@ -518,30 +548,30 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
             childNodes: [],
             label: day,
             id: day,
-            isExpanded: index === 0
-          }
+            isExpanded: index === 0,
+          };
         }
         result[day].childNodes.push({
           label: timeFormat(item.time),
           id: index,
-          isSelected: index === 0
-        })
-
-      })
-      return Object.values(result)
-    }
+          isSelected: index === 0,
+        });
+      });
+      return Object.values(result);
+    };
     console.log(snapList, " snapList");
-    setTreeContents(groupSnapListByDay(snapList))
-  }
+    setTreeContents(groupSnapListByDay(snapList));
+  };
   const mount = async () => {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
-    setLoading(true)
-    const snapList = (await getPageSnapshot(pageUid)).sort((a, b) => b.time - a.time)
+    setLoading(true);
+    const snapList = (await getPageSnapshot(pageUid)).sort(
+      (a, b) => b.time - a.time
+    );
     setList(snapList);
-    setLoading(false)
-    group(snapList)
-
+    setLoading(false);
+    group(snapList);
   };
   useEffect(() => {
     mount();
@@ -553,18 +583,18 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     diffSnapshots(diff, json, getFullPageJson(pageUidRef.current));
     restorePageByDiff(json.uid, diff);
     setRestoring(false);
-    setAlerting(false)
+    setAlerting(false);
     await delay();
     props.onChange(false);
   };
   // console.log(list, " = list", treeContents);
   return (
-    <div className="rm-snapshot" >
-      {
-        isLoading ?
-          <div className="place-spinner"><Spinner size={SpinnerSize.LARGE} /></div>
-          : null
-      }
+    <div className="rm-snapshot">
+      {isLoading ? (
+        <div className="place-spinner">
+          <Spinner size={SpinnerSize.LARGE} />
+        </div>
+      ) : null}
       <PagePreview
         uid={pageUidRef.current}
         data={list[index]?.json}
@@ -574,44 +604,58 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
       />
       <div className="rm-snapshot-list">
         <div className="rm-snapshot-list-view">
-
           <Tree
             contents={treeContents}
-            onNodeClick={(node: TreeNodeInfo, nodePath: NodePath,) => {
+            onNodeClick={(node: TreeNodeInfo, nodePath: NodePath) => {
               const originallySelected = node.isSelected;
               // console.log(originallySelected, ' node ', nodePath);
 
               if (!node.childNodes) {
-                setIndex(node.id as number)
-                setTreeContents(prev => {
-                  forEachNode(prev, node => node.isSelected = false)
-                  forNodeAtPath(prev, nodePath, node => { node.isSelected = (originallySelected == null ? true : !originallySelected) });
-                  return [...prev]
-                })
-              } else {
-                setTreeContents(prev => {
-                  forNodeAtPath(prev, nodePath, node => (node.isExpanded = !node.isExpanded));
+                setIndex(node.id as number);
+                setTreeContents((prev) => {
+                  forEachNode(prev, (node) => (node.isSelected = false));
+                  forNodeAtPath(prev, nodePath, (node) => {
+                    node.isSelected =
+                      originallySelected == null ? true : !originallySelected;
+                  });
                   return [...prev];
-                })
+                });
+              } else {
+                setTreeContents((prev) => {
+                  forNodeAtPath(
+                    prev,
+                    nodePath,
+                    (node) => (node.isExpanded = !node.isExpanded)
+                  );
+                  return [...prev];
+                });
               }
             }}
             onNodeCollapse={(_node, nodePath) => {
-              setTreeContents(prev => {
-                forNodeAtPath(prev, nodePath, node => (node.isExpanded = false));
+              setTreeContents((prev) => {
+                forNodeAtPath(
+                  prev,
+                  nodePath,
+                  (node) => (node.isExpanded = false)
+                );
                 return [...prev];
-              })
+              });
             }}
             onNodeExpand={(_node, nodePath) => {
-              setTreeContents(prev => {
-                forNodeAtPath(prev, nodePath, node => (node.isExpanded = true));
+              setTreeContents((prev) => {
+                forNodeAtPath(
+                  prev,
+                  nodePath,
+                  (node) => (node.isExpanded = true)
+                );
                 return [...prev];
-              })
+              });
             }}
           />
         </div>
 
         <div className="rm-snapshot-list-footer">
-          <ButtonGroup fill >
+          <ButtonGroup fill>
             <Button
               disabled={!list[index]}
               text="Restore version"
@@ -646,18 +690,13 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         icon="warning-sign"
       >
         <>
-          <h4>
-            Restoring blocks will override blocks on the page.
-          </h4>
-
-          The <strong>back references</strong> of the overridden blocks will no longer be valid and will be replaced by the text in the referenced blocks.
+          <h4>Restoring blocks will override blocks on the page.</h4>
+          The <strong>back references</strong> of the overridden blocks will no
+          longer be valid and will be replaced by the text in the referenced
+          blocks.
           <br />
-          <p>
-            Are you sure you want to continue?
-          </p>
+          <p>Are you sure you want to continue?</p>
         </>
-
-
       </Alert>
       <Alert
         cancelButtonText="Close"
@@ -667,15 +706,18 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
         intent="danger"
         isOpen={isDeleting}
         onConfirm={async () => {
-          console.log("___________________")
-          setRestoring(true)
+          console.log("___________________");
+          setRestoring(true);
           // await delay(100)
-          const result = await deletePageSnapshot(pageUidRef.current, list[index].time);
-          setList(result)
-          setIndex(0)
-          group(result.sort((a, b) => b.time - a.time))
-          setRestoring(false)
-          setDeleting(false)
+          const result = await deletePageSnapshot(
+            pageUidRef.current,
+            list[index].time
+          );
+          setList(result);
+          setIndex(0);
+          group(result.sort((a, b) => b.time - a.time));
+          setRestoring(false);
+          setDeleting(false);
         }}
         icon="trash"
         loading={restoring}
@@ -744,7 +786,11 @@ const cleanPage = (pageUid: string) => {
   }
 };
 
-const restoreBlock = async (parent: { uid: string }, block: SnapshotBlock, restored: Set<string>) => {
+const restoreBlock = async (
+  parent: { uid: string },
+  block: SnapshotBlock,
+  restored: Set<string>
+) => {
   await window.roamAlphaAPI.deleteBlock({
     block,
   });
@@ -762,14 +808,15 @@ const restoreBlock = async (parent: { uid: string }, block: SnapshotBlock, resto
       });
       restored.add(block.uid);
     }
-
   } catch (e) {
-    restored.add(block.uid)
-    console.warn(e, parent, block, ' _ ', restored)
+    restored.add(block.uid);
+    console.warn(e, parent, block, " _ ", restored);
   }
 
   if (block.children) {
-    block.children.forEach((grandChild) => restoreBlock(block, grandChild, restored));
+    block.children.forEach((grandChild) =>
+      restoreBlock(block, grandChild, restored)
+    );
   }
 };
 
@@ -818,7 +865,7 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
       });
     }
     if (diff.block.added) {
-      const createdBlocks = new Set<string>()
+      const createdBlocks = new Set<string>();
       diff.block.added
         .sort((a, b) => a.parentUids.length - b.parentUids.length)
         .forEach(async (block) => {
@@ -840,9 +887,8 @@ const restorePageByDiff = (pageUid: string, diff: Diff) => {
   }
   setTimeout(() => {
     isRestoring = false;
-  }, 500)
+  }, 500);
 };
-
 
 let isRestoring = false;
 const startLoop = () => {
@@ -852,7 +898,7 @@ const startLoop = () => {
       console.log("test:", item);
       if (isExceed(item.end)) {
         recordPage(item);
-        SNAP_SHOT_MAP.delete(key)
+        SNAP_SHOT_MAP.delete(key);
       }
     });
   }, minute_1);
@@ -862,20 +908,19 @@ const startLoop = () => {
   });
 };
 
-const newRecordSet = new Set<string>()
+const newRecordSet = new Set<string>();
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
-
   if (!SNAP_SHOT_MAP.has(uid))
     SNAP_SHOT_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
-  console.log(await hasRecordInServer(uid), '---', uid)
+  console.log(await hasRecordInServer(uid), "---", uid);
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
-  if (!await hasRecordInServer(uid) && !newRecordSet.has(uid)) {
+  if (!(await hasRecordInServer(uid)) && !newRecordSet.has(uid)) {
     newRecordSet.add(uid);
-    recordPage({ uid })
+    recordPage({ uid });
   }
 };
 
@@ -915,21 +960,18 @@ const mutationAttributeTrigger = async (mutation: MutationRecord) => {
   }
 };
 
-
 function simpleDebounce(fn: Function, delay = 500) {
-  let timer = setTimeout(() => {
-
-  }, delay);
+  let timer = setTimeout(() => {}, delay);
   return (...args: any[]) => {
-    clearTimeout(timer)
+    clearTimeout(timer);
     timer = setTimeout(() => {
-      fn(...args)
-    }, delay)
-  }
+      fn(...args);
+    }, delay);
+  };
 }
 
-const codeBlockTrigger = simpleDebounce(mutationTrigger)
-const codeBlockAttributeTrigger = simpleDebounce(mutationAttributeTrigger)
+const codeBlockTrigger = simpleDebounce(mutationTrigger);
+const codeBlockAttributeTrigger = simpleDebounce(mutationAttributeTrigger);
 
 function checkCodeBlocks(mutation: MutationRecord) {
   const el = mutation.target as HTMLElement;
@@ -945,10 +987,10 @@ function checkCodeBlocks(mutation: MutationRecord) {
   trigger();
   return true;
   function trigger() {
-    if (mutation.type === 'childList') {
+    if (mutation.type === "childList") {
       codeBlockTrigger(mutation);
-    } else if (mutation.type === 'attributes') {
-      codeBlockAttributeTrigger(mutation)
+    } else if (mutation.type === "attributes") {
+      codeBlockAttributeTrigger(mutation);
     }
   }
 }
@@ -981,19 +1023,25 @@ function listenToChange() {
   });
 }
 
-
 export function initExtension() {
   startLoop();
-  // initBottomOperators();
+  initBottomOperators();
   listenToChange();
 }
 
 type NodePath = number[];
-function forNodeAtPath(nodes: TreeNodeInfo[], path: NodePath, callback: (node: TreeNodeInfo) => void) {
+function forNodeAtPath(
+  nodes: TreeNodeInfo[],
+  path: NodePath,
+  callback: (node: TreeNodeInfo) => void
+) {
   callback(Tree.nodeFromPath(path, nodes));
 }
 
-function forEachNode(nodes: TreeNodeInfo[] | undefined, callback: (node: TreeNodeInfo) => void) {
+function forEachNode(
+  nodes: TreeNodeInfo[] | undefined,
+  callback: (node: TreeNodeInfo) => void
+) {
   if (nodes === undefined) {
     return;
   }
@@ -1004,104 +1052,91 @@ function forEachNode(nodes: TreeNodeInfo[] | undefined, callback: (node: TreeNod
   }
 }
 
-
 function Snapping() {
-  const forceUpdate = useReducer(a => a + 1, 0)[1];
+  const forceUpdate = useReducer((a) => a + 1, 0)[1];
 
   const content = [...SNAP_SHOT_MAP.entries()].map(([key, info]) => {
-    return <div>
+    return (
       <div>
-        {key}: {info.start} - {info.end}
+        <div>
+          {key}: {info.start} - {info.end}
+        </div>
+        <ButtonGroup>
+          <Button
+            small
+            onClick={() => {
+              SNAP_SHOT_MAP.delete(key);
+              forceUpdate();
+            }}
+          >
+            Remove
+          </Button>
+          <Divider />
+          <Button
+            small
+            intent="primary"
+            onClick={() => {
+              SNAP_SHOT_MAP.delete(key);
+              recordPage(info);
+              forceUpdate();
+            }}
+          >
+            Writing
+          </Button>
+        </ButtonGroup>
       </div>
-      <ButtonGroup >
-        <Button
-          small
-          onClick={() => {
-          SNAP_SHOT_MAP.delete(key);
-          forceUpdate();
-        }}>Remove</Button>
-        <Divider />
-        <Button small intent="primary" onClick={() => {
-          SNAP_SHOT_MAP.delete(key);
-          recordPage(info);
-          forceUpdate();
-        }}>Writing</Button>
+    );
+  });
 
-      </ButtonGroup>
-    </div>
-  })
-
-  return <div>
-    {content}
-  </div>
+  return <div>{content}</div>;
 }
 
 function BottomOperators() {
-  const forceUpdate = useReducer(a => a + 1, 0)[1];
-  const [infoShowing, setInfoShowing] = useState(false)
+  const [state, setState] = useState({
+    uploading: false,
+    uids: [] as string[],
+  });
   useEffect(() => {
-    const timer = setInterval(() => {
-      forceUpdate();
-    }, 1000)
-    return () => {
-      clearInterval(timer)
-    }
+    return onCacheChangeEvent(() => {});
   }, []);
-  const isSnapping = SNAP_SHOT_MAP.size > 0;
-  return <>
-    <Dialog
-      isOpen={infoShowing}
-      isCloseButtonShown
-      title="Page History Info"
-      canEscapeKeyClose
-      canOutsideClickClose
-      onClose={() => setInfoShowing(false)}
-      shouldReturnFocusOnClose
-    >
-      <div className={DIALOG_BODY}>
-        <Snapping />
-      </div>
-    </Dialog>
-    <ButtonGroup fill>
 
-      <Button
-        onClick={() => {
-          setInfoShowing(true)
-        }}
-        style={{
-          background: '#202B33',
-          outline: 'none'
-        }}
-        small
-        icon={
-          <Icon icon="ring" intent={isSnapping ? "warning" : "none"} />
+  return (
+    <div>
+      <Popover
+        disabled={state.uploading}
+        interactionKind="hover-target"
+        content={
+          <div className={Classes.DIALOG_BODY}>
+            "距离下次同步还有..., 点击可立即同步"
+          </div>
         }
-      />
-
-      <Button
-        small
-        style={{
-          background: '#202B33',
-          outline: 'none'
-
-        }}
-        className="bp3-dark"
-
-        icon="trash" />
-
-    </ButtonGroup>
-  </>
+      >
+        <Button
+          loading={state.uploading}
+          onClick={async () => {
+            if (state.uids.length) {
+              setState((prev) => ({ ...prev, uploading: true }));
+            }
+              await saveToServer();
+            
+          }}
+          icon="cloud-upload"
+          large
+        />
+      </Popover>
+    </div>
+  );
 }
 
 function initBottomOperators() {
-  const logo = document.querySelector("#roam-sidebar-logo");
+  const app = document.querySelector("#app");
   const el = document.createElement("div");
+  el.className = "rm-history-server-el";
+  app.appendChild(el);
 
-  logo.parentElement.insertBefore(el, logo);
-
-  ReactDOM.render(<BottomOperators />, el)
+  ReactDOM.render(<BottomOperators />, el);
 
   extension_helper.on_uninstall(() => {
     el.remove();
-  })
+  });
 }

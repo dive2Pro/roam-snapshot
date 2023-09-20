@@ -1,5 +1,7 @@
 import { Toast, Toaster } from "@blueprintjs/core";
 import { openDB } from "idb";
+import { emitCacheChangeEvent } from "./event";
+import { PullBlock } from "roamjs-components/types";
 
 const dbPromise = openDB("rm-history", 1, {
   upgrade(db) {
@@ -84,6 +86,7 @@ class RemoteCache {
 }
 
 const remoteCache = new RemoteCache();
+
 const cache = new LocalCache();
 
 function markHasUpgrade() {
@@ -110,24 +113,25 @@ async function compatial() {
     message: `Upgrading Page History...`,
     intent: "success",
     timeout: 0,
+    icon: "cloud-download",
   });
   try {
     await Promise.all(
-      savedObj
-        .map(([k, url]) => {
-          return new Promise(async (resolve) => {
-            (window.roamAlphaAPI as unknown as RoamExtensionAPI).file
-              .get({ url })
-              .then(async (res) => {
-                return JSON.parse(await res.text());
-              })
-              .then((json) => {
-                cache.add(k, json);
-              }).finally(() => {
-                resolve(1);
-              });
-          });
-        })
+      savedObj.map(([k, url]) => {
+        return new Promise(async (resolve) => {
+          (window.roamAlphaAPI as unknown as RoamExtensionAPI).file
+            .get({ url })
+            .then(async (res) => {
+              return JSON.parse(await res.text());
+            })
+            .then((json) => {
+              cache.add(k, json);
+            })
+            .finally(() => {
+              resolve(1);
+            });
+        });
+      })
     );
   } catch (e) {
   } finally {
@@ -142,7 +146,7 @@ async function compatial() {
         return isSnapshotKey(key);
       })
       .map((k) => [k, API.settings.get(k) as string]);
-   
+
     return [
       [
         "rm-history-08-10-2023",
@@ -185,8 +189,127 @@ const isSnapshotKey = (k: string) => {
   return k.startsWith(`rm-history-`);
 };
 
-async function saveToServer(key: string, value: any) {
-  const downloadUrl = await cache.add(getKey(key), value);
+export async function saveToServer() {
+  // 将所有的缓存都保存到服务器.
+  const db = await dbPromise;
+  const allCacheKeys = await db.getAllKeys(CONSTANTS.DB_STORE);
+  const allCacheData = await Promise.all(
+    allCacheKeys.map((k) => {
+      return [k, db.get(CONSTANTS.DB_STORE, k)];
+    })
+  );
+  const url = await (
+    window.roamAlphaAPI as unknown as RoamExtensionAPI
+  ).file.upload({
+    file: new File([JSON.stringify(allCacheData)], `rm-history.json`, {
+      type: "application/json",
+    }),
+    toast: { hide: true },
+  });
+  return roamCacheUrl.saveUrl(url)
+}
+
+const getNthChildUidByBlockUid = ({
+  blockUid,
+  order,
+}: {
+  blockUid: string;
+  order: number;
+}): string =>
+  (
+    window.roamAlphaAPI.data.fast.q(
+      `[:find (pull ?c [:block/uid]) :where [?p :block/uid "${blockUid}"] [?p :block/children ?c] [?c :block/order ${order}] ]`
+    )?.[0]?.[0] as PullBlock
+  )?.[":block/uid"] || "";
+
+const creaetOrGetFirstChildUidByPageUid = async (pageUid: string) => {
+  let uid = getNthChildUidByBlockUid({
+    blockUid: pageUid,
+    order: 0
+  })
+  if(uid) {
+    return uid;
+  }
+  uid = window.roamAlphaAPI.util.generateUID();
+  console.log(pageUid, uid, ' ---');
+
+  await window.roamAlphaAPI.createBlock({
+    block: {
+      uid,
+      string: ""
+    },
+    location: {
+      "parent-uid": pageUid,
+      order: 0
+    },
+  });
+  return uid
+};
+
+const getTextByBlockUid = (uid = ""): string =>
+  (uid &&
+    window.roamAlphaAPI.pull("[:block/string]", [":block/uid", uid])?.[
+      ":block/string"
+    ]) ||
+  "";
+
+const getPageUidByPageTitle = (title: string): string =>
+  window.roamAlphaAPI.pull("[:block/uid]", [":node/title", title])?.[
+    ":block/uid"
+  ] || "";
+
+class RoamCacheUrl {
+  pageTitle = "roam/plugin/PageHistory";
+  pageUid = "";
+  firstChildUid = "";
+  url = "";
+  constructor() {
+    this.init();
+  }
+  async init() {
+    await this.getPageUid();
+    await this.getFirstChildUid();
+    this.loadUrl();
+  }
+  async getFirstChildUid() {
+    this.firstChildUid = await creaetOrGetFirstChildUidByPageUid(this.pageUid);
+  }
+
+  async getPageUid() {
+    try {
+      const uid = await window.roamAlphaAPI.util.generateUID();
+      await window.roamAlphaAPI.createPage({
+        page: {
+          title: this.pageTitle,
+          uid,
+        },
+      });
+      this.pageUid = uid;
+    } catch (e) {
+      // 通过 page/title 获取 uid
+      this.pageUid = getPageUidByPageTitle(this.pageTitle);
+    }
+  }
+  saveUrl(url: string) {
+    return window.roamAlphaAPI.updateBlock({
+      block: {
+        uid: this.firstChildUid,
+        string: url
+      },
+    });
+  }
+
+  loadUrl() {
+    this.url = getTextByBlockUid(this.firstChildUid);
+  }
+}
+
+const roamCacheUrl = new RoamCacheUrl();
+
+async function saveToCache(key: string, value: any) {
+  await cache.add(getKey(key), value);
+  // 一旦有记录, 就记录到本地, 触发显示倒计时
+  emitCacheChangeEvent(key);
 }
 
 async function getFromServer(key: string) {
@@ -306,7 +429,7 @@ export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
       time: Date.now(),
     });
   }
-  saveToServer(pageUid, sorted);
+  saveToCache(pageUid, sorted);
 }
 
 export async function deletePageSnapshot(pageUid: string, time: number) {
@@ -317,7 +440,7 @@ export async function deletePageSnapshot(pageUid: string, time: number) {
 
   const filtered = sorted.filter((item) => item.time !== time);
   console.log(pageUid, sorted, filtered, " -----@@----");
-  await saveToServer(pageUid, filtered);
+  await saveToCache(pageUid, filtered);
   return filtered;
 }
 
