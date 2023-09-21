@@ -4,12 +4,10 @@ import {
   Icon,
   Alert,
   Tree,
-  Classes,
   TreeNodeInfo,
   Spinner,
   SpinnerSize,
   Divider,
-  Popover,
 } from "@blueprintjs/core";
 import React, {
   FC,
@@ -18,7 +16,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import ReactDOM from "react-dom";
 import {
   deletePageSnapshot,
   diffSnapshot,
@@ -27,7 +24,6 @@ import {
   getPageSnapshot,
   hasRecordInCache,
   savePageSnapshot,
-  saveToServer,
   sortByOrder,
 } from "./config";
 import { keys } from "./helper";
@@ -37,7 +33,7 @@ import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
-import { onCacheChangeEvent } from "./event";
+import { initBottomOperators } from "./initBottomOperators";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -1081,65 +1077,4 @@ function Snapping() {
   return <div>{content}</div>;
 }
 
-function BottomOperators() {
-  const [state, setState] = useState({
-    uploading: false,
-    // uids: new Set<string>()
-    ready: false
-  });
-  useEffect(() => {
-    return onCacheChangeEvent((event: { detail: string }) => {
-      
-      setState(prev => {
-        if(prev.ready) {
-          return prev;
-        }
-        return {
-          ...prev,
-          ready: true
-        }
-      })
-    });
-  }, []);
- 
-  return (
-    <div>
-      <Popover
-        disabled={state.uploading}
-        interactionKind="hover-target"
-        content={
-          <div className={Classes.DIALOG_BODY}>
-            "距离下次同步还有..., 点击可立即同步"
-          </div>
-        }
-      >
-        <Button
-          loading={state.uploading}
-          onClick={async () => {
-              await saveToServer();
 
-            if (state.ready) {
-              setState((prev) => ({ ...prev, uploading: true }));
-              setState((prev) => ({ ...prev, uploading: false, ready: false  }));
-            }
-          }}
-          icon="cloud-upload"
-          large
-        />
-      </Popover>
-    </div>
-  );
-}
-
-function initBottomOperators() {
-  const app = document.querySelector("#app");
-  const el = document.createElement("div");
-  el.className = "rm-history-server-el";
-  app.appendChild(el);
-
-  ReactDOM.render(<BottomOperators />, el);
-
-  extension_helper.on_uninstall(() => {
-    el.remove();
-  });
-}

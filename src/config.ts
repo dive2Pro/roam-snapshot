@@ -22,12 +22,22 @@ export async function initConfig(extensionAPI: RoamExtensionAPI) {
     settings: [
       {
         id: CONSTANTS.PAGE_INTERVAL,
-        name: "Time Interval",
+        name: "Local Time Interval",
         description:
           "How long should you wait before taking a snapshot of a page after starting to edit it (The unit is minutes)",
         action: {
           type: "input",
           placeholder: "10",
+        },
+      },
+      {
+        id: CONSTANTS.PAGE_UPLOAD_INTERVAL,
+        name: "Upload Interval",
+        description:
+          "How long before uploading the local cache to Roam Services? (The unit is minutes)",
+        action: {
+          type: "input",
+          placeholder: "60",
         },
       },
     ],
@@ -36,6 +46,10 @@ export async function initConfig(extensionAPI: RoamExtensionAPI) {
 
 export function getIntervalTime() {
   return +API.settings.get(CONSTANTS.PAGE_INTERVAL) || 10;
+}
+
+export function getUploadIntervalTime() {
+  return +API.settings.get(CONSTANTS.PAGE_UPLOAD_INTERVAL) || 60;
 }
 
 export async function saveToServer() {
