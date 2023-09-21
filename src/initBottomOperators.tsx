@@ -24,7 +24,9 @@ function BottomOperators() {
     let clear = () => {
       //
     };
+
     const startCount = () => {
+      console.log('start Count')
       const timer = setInterval(() => {
         setState((prev) => {
           if (prev.lastMinutes <= 1) {
@@ -89,9 +91,16 @@ function BottomOperators() {
         interactionKind="hover-target"
         content={
           <div className={Classes.DIALOG_BODY}>
-            <h4>Page History</h4>
-            Time until the next synchronization to service: ... Click to
-            synchronize immediately.
+            <p>
+              The next upload to the server is in {state.lastMinutes} minutes.
+            </p>
+            <p>
+              <strong>Click</strong> to upload immediately.
+            </p>
+
+            <p style={{ textAlign: 'right'}}>
+              <small>Page History</small>
+            </p>
           </div>
         }
       >
