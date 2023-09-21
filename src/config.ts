@@ -53,6 +53,13 @@ export function getUploadIntervalTime() {
 }
 
 export async function saveToServer() {
+  const oldUrl = roamCacheUrl.loadUrl()
+  if (oldUrl) {
+    await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete({
+      url: oldUrl,
+    });
+    console.log(`deleted: ${oldUrl}`);
+  }
   // 将所有的缓存都保存到服务器.
  const allCacheData = await dbOperator.getAllData();
   console.log("saveToServer: ", JSON.stringify(allCacheData), allCacheData);

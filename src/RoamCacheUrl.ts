@@ -83,6 +83,7 @@ class RoamCacheUrl {
 
   loadUrl() {
     this.url = getTextByBlockUid(this.firstChildUid);
+    return this.url;
   }
 
   getUrlChangeTime() {
