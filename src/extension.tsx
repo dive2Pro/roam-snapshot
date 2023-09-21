@@ -1,8 +1,6 @@
 import {
   Button,
   ButtonGroup,
-  Menu,
-  MenuItem,
   Icon,
   Alert,
   Tree,
@@ -10,15 +8,12 @@ import {
   TreeNodeInfo,
   Spinner,
   SpinnerSize,
-  Tooltip,
-  Dialog,
   Divider,
   Popover,
 } from "@blueprintjs/core";
 import React, {
   FC,
   useEffect,
-  useMemo,
   useReducer,
   useRef,
   useState,
@@ -30,24 +25,19 @@ import {
   diffSnapshots,
   getIntervalTime,
   getPageSnapshot,
-  hasRecordInServer,
-  keys,
+  hasRecordInCache,
   savePageSnapshot,
   saveToServer,
   sortByOrder,
 } from "./config";
+import { keys } from "./helper";
 import { extension_helper, minute_1 } from "./helper";
 import Dayjs from "dayjs";
 import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
-import dayjs from "dayjs";
-import {
-  DIALOG_BODY,
-  DIALOG_HEADER,
-} from "@blueprintjs/core/lib/esm/common/classes";
-import { onCacheChangeEvent, onStartUploadEvent } from "./event";
+import { onCacheChangeEvent } from "./event";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -916,9 +906,9 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
-  console.log(await hasRecordInServer(uid), "---", uid);
+  console.log(await hasRecordInCache(uid), "---", uid);
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
-  if (!(await hasRecordInServer(uid)) && !newRecordSet.has(uid)) {
+  if (!(await hasRecordInCache(uid)) && !newRecordSet.has(uid)) {
     newRecordSet.add(uid);
     recordPage({ uid });
   }
