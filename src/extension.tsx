@@ -47,7 +47,7 @@ import {
   DIALOG_BODY,
   DIALOG_HEADER,
 } from "@blueprintjs/core/lib/esm/common/classes";
-import { onCacheChangeEvent } from "./event";
+import { onCacheChangeEvent, onStartUploadEvent } from "./event";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -1094,12 +1094,24 @@ function Snapping() {
 function BottomOperators() {
   const [state, setState] = useState({
     uploading: false,
-    uids: [] as string[],
+    // uids: new Set<string>()
+    ready: false
   });
   useEffect(() => {
-    return onCacheChangeEvent(() => {});
+    return onCacheChangeEvent((event: { detail: string }) => {
+      
+      setState(prev => {
+        if(prev.ready) {
+          return prev;
+        }
+        return {
+          ...prev,
+          ready: true
+        }
+      })
+    });
   }, []);
-
+ 
   return (
     <div>
       <Popover
@@ -1114,11 +1126,12 @@ function BottomOperators() {
         <Button
           loading={state.uploading}
           onClick={async () => {
-            if (state.uids.length) {
-              setState((prev) => ({ ...prev, uploading: true }));
-            }
               await saveToServer();
-            
+
+            if (state.ready) {
+              setState((prev) => ({ ...prev, uploading: true }));
+              setState((prev) => ({ ...prev, uploading: false, ready: false  }));
+            }
           }}
           icon="cloud-upload"
           large

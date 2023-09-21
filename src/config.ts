@@ -1,6 +1,6 @@
 import { Toast, Toaster } from "@blueprintjs/core";
 import { openDB } from "idb";
-import { emitCacheChangeEvent } from "./event";
+import { emitCacheChangeEvent, emitStartUploadEvent } from "./event";
 import { PullBlock } from "roamjs-components/types";
 
 const dbPromise = openDB("rm-history", 1, {
@@ -8,6 +8,43 @@ const dbPromise = openDB("rm-history", 1, {
     db.createObjectStore(CONSTANTS.DB_STORE);
   },
 });
+
+class DBOperator {
+  updateTimeKey = "updateTime";
+  async update(k: string, value: any) {
+    const r = await (await dbPromise).put(CONSTANTS.DB_STORE, value, k);
+    this.updateTime();
+
+    return r;
+  }
+
+  async get(key: string) {
+    return (await dbPromise).get(CONSTANTS.DB_STORE, key);
+  }
+
+  private async updateTime() {
+    await (
+      await dbPromise
+    ).put(CONSTANTS.DB_STORE, Date.now(), this.updateTimeKey);
+  }
+
+  async getUpdateTime() {
+    return (await this.get(this.updateTimeKey)) || 0;
+  }
+
+  async replaceWith(data: [string, any][]) {
+    console.log("DBOperator: replaceWith: ", data);
+    const tx = (await dbPromise).transaction(CONSTANTS.DB_STORE, "readwrite");
+    await Promise.all(
+      data.map((item) => {
+        return tx.store.put(item[1], item[0]);
+      })
+    );
+    await tx.done;
+  }
+}
+
+const dbOperator = new DBOperator();
 
 const CONSTANTS = {
   PAGE_INTERVAL: "page-interval",
@@ -17,13 +54,13 @@ const CONSTANTS = {
 
 class LocalCache {
   async add(key: string, value: any) {
-    const r = await (await dbPromise).put(CONSTANTS.DB_STORE, value, key);
+    const r = dbOperator.update(key, value);
     return r.toString();
   }
   async get(key: string) {
     // 兼容 v1 , 如果本地没有,
     console.log(key, " ---");
-    return (await dbPromise).get(CONSTANTS.DB_STORE, getKey(key));
+    return dbOperator.get(getKey(key));
   }
 }
 
@@ -98,10 +135,6 @@ function hasUpgrade(v = 1) {
 
 // 创建一个兼容方法
 async function compatial() {
-  if (hasUpgrade()) {
-    // return;
-  }
-
   const savedObj = getAllSettings();
   // console.log("savedKeys", savedKeys);
   if (savedObj.length <= 0) {
@@ -157,7 +190,7 @@ async function compatial() {
 }
 
 let API: RoamExtensionAPI;
-export function initConfig(extensionAPI: RoamExtensionAPI) {
+export async function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
   API.settings.panel.create({
     tabTitle: "Page History",
@@ -174,7 +207,40 @@ export function initConfig(extensionAPI: RoamExtensionAPI) {
       },
     ],
   });
-  compatial();
+  const dbOperatorTime = await dbOperator.getUpdateTime();
+  // 如果本地缓存的更新时间晚于 url 改变的时间, 触发上传的倒计时
+  if (dbOperatorTime > roamCacheUrl.getUrlChangeTime()) {
+    emitCacheChangeEvent("");
+  }
+  // 如果早于 url 改变的时间, 请求 url 上的数据写入到本地缓存
+  else if (dbOperatorTime < roamCacheUrl.getUrlChangeTime()) {
+    const toaster = Toaster.create({});
+    const toastKey = toaster.show({
+      message: `Updating Page History from Remote Cache`,
+      intent: "success",
+      timeout: 0,
+      icon: "cloud-download",
+    });
+
+    try {
+      const file = await (
+        window.roamAlphaAPI as unknown as RoamExtensionAPI
+      ).file.get({ url: roamCacheUrl.url });
+      const data = JSON.parse(await file.text());
+      await dbOperator.replaceWith(data);
+    } catch (e) {
+      console.error(`updating error`, e);
+    } finally {
+      toaster.dismiss(toastKey);
+    }
+  }
+  // 如果没有本地缓存, 也没有 url, 则检查是否需要兼容.
+  else {
+    if (hasUpgrade()) {
+      // return;
+    }
+    compatial();
+  }
 }
 
 export function getIntervalTime() {
@@ -193,11 +259,11 @@ export async function saveToServer() {
   // 将所有的缓存都保存到服务器.
   const db = await dbPromise;
   const allCacheKeys = await db.getAllKeys(CONSTANTS.DB_STORE);
-  const allCacheData = await Promise.all(
-    allCacheKeys.map((k) => {
-      return [k, db.get(CONSTANTS.DB_STORE, k)];
-    })
-  );
+  const allCacheData = [];
+  for await (const k of allCacheKeys) {
+    allCacheData.push([k, await db.get(CONSTANTS.DB_STORE, k)]);
+  }
+  console.log("saveToServer: ", JSON.stringify(allCacheData), allCacheData);
   const url = await (
     window.roamAlphaAPI as unknown as RoamExtensionAPI
   ).file.upload({
@@ -206,7 +272,7 @@ export async function saveToServer() {
     }),
     toast: { hide: true },
   });
-  return roamCacheUrl.saveUrl(url)
+  return roamCacheUrl.saveUrl(url);
 }
 
 const getNthChildUidByBlockUid = ({
@@ -225,25 +291,25 @@ const getNthChildUidByBlockUid = ({
 const creaetOrGetFirstChildUidByPageUid = async (pageUid: string) => {
   let uid = getNthChildUidByBlockUid({
     blockUid: pageUid,
-    order: 0
-  })
-  if(uid) {
+    order: 0,
+  });
+  if (uid) {
     return uid;
   }
   uid = window.roamAlphaAPI.util.generateUID();
-  console.log(pageUid, uid, ' ---');
+  console.log(pageUid, uid, " ---");
 
   await window.roamAlphaAPI.createBlock({
     block: {
       uid,
-      string: ""
+      string: "",
     },
     location: {
       "parent-uid": pageUid,
-      order: 0
+      order: 0,
     },
   });
-  return uid
+  return uid;
 };
 
 const getTextByBlockUid = (uid = ""): string =>
@@ -252,6 +318,12 @@ const getTextByBlockUid = (uid = ""): string =>
       ":block/string"
     ]) ||
   "";
+const getEditTimeByBlockUid = (uid = "") =>
+  (uid &&
+    window.roamAlphaAPI.pull("[:edit/time]", [":block/uid", uid])?.[
+      ":edit/time"
+    ]) ||
+  0;
 
 const getPageUidByPageTitle = (title: string): string =>
   window.roamAlphaAPI.pull("[:block/uid]", [":node/title", title])?.[
@@ -294,13 +366,17 @@ class RoamCacheUrl {
     return window.roamAlphaAPI.updateBlock({
       block: {
         uid: this.firstChildUid,
-        string: url
+        string: url,
       },
     });
   }
 
   loadUrl() {
     this.url = getTextByBlockUid(this.firstChildUid);
+  }
+
+  getUrlChangeTime() {
+    return getEditTimeByBlockUid(this.firstChildUid);
   }
 }
 
