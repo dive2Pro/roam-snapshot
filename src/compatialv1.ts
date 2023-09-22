@@ -7,7 +7,7 @@ import { isSnapshotKey } from "./CONSTANTS";
 
 export async function compatialv1() {
   const savedObj = getAllSettings();
-  // console.log("savedKeys", savedKeys);
+  console.log("savedKeys", savedObj);
   if (savedObj.length <= 0) {
     markHasUpgrade();
     return;
@@ -23,8 +23,9 @@ export async function compatialv1() {
     await Promise.all(
       savedObj.map(([k, url]) => {
         return new Promise(async (resolve) => {
-          (window.roamAlphaAPI as unknown as RoamExtensionAPI).file
-            .get({ url })
+          
+            (window.roamAlphaAPI as unknown as RoamExtensionAPI)
+            .file.get({ url })
             .then(async (res) => {
               return JSON.parse(await res.text());
             })
@@ -44,18 +45,30 @@ export async function compatialv1() {
   }
 
   function getAllSettings() {
-    const allSettings = API.settings.getAll();
+    const allSettings = getOldSettings();
+
     const pageHistories = Object.keys(allSettings)
       .filter((key) => {
-        return isSnapshotKey(key);
+        return isSnapshotKey(key) && allSettings[key].startsWith("https://");
       })
-      .map((k) => [k, API.settings.get(k) as string]);
-
-    return [
-      [
-        "rm-history-08-10-2023",
-        "https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fthoughtfull%2F5N7aGHUhnc.json?alt=media&token=da6fc56b-a31d-4a62-afdd-ad94424a235b",
-      ],
-    ];
+      .map((k) => [k, allSettings[k]]);
+    return pageHistories;
   }
+}
+
+function getOldSettings() {
+  // 获取所有的LocalStorage键
+  var keys = Object.keys(localStorage);
+
+  // 创建一个对象来存储所有的键值对
+  var localStorageData: Record<string, any> = {};
+
+  // 遍历所有的键，并将其值存储到localStorageData对象中
+  keys.forEach(function (key) {
+    localStorageData[key] = localStorage.getItem(key);
+  });
+
+  // 现在，localStorageData对象包含了所有LocalStorage中的键值对
+  console.log(localStorageData);
+  return localStorageData;
 }

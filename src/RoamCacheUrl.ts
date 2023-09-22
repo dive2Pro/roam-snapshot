@@ -87,7 +87,7 @@ class RoamCacheUrl {
   }
 
   getUrlChangeTime() {
-    return getEditTimeByBlockUid(this.firstChildUid);
+    return this.url ? getEditTimeByBlockUid(this.firstChildUid) : 0;
   }
 }
 export const roamCacheUrl = new RoamCacheUrl();
