@@ -9,7 +9,11 @@
     "esModuleInterop": true,
     "allowJs": true,
     "jsx": "preserve",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "skipLibCheck": true,
     "strict": false,
     "forceConsistentCasingInFileNames": true,
@@ -26,6 +30,6 @@
     "node_modules"
   ],
   "files": [
-    "node_modules/roamjs-components/types/index.d.ts", "./src/compatialv1.ts", "./src/dbOperator.ts", "./src/CONSTANTS.ts", "./src/RemoteCache.ts", "src/RoamCacheUrl.ts", "./src/cache.ts", "./src/syncCache.ts", "./src/initBottomOperators.tsx"
+    "node_modules/roamjs-components/types/index.d.ts", "./src/compatialv1.ts", "./src/dbOperator.ts", "./src/CONSTANTS.ts", "./src/RemoteCache.ts", "src/RoamCacheUrl.ts", "./src/cache.ts", "./src/syncCache.ts", 
   ]
 }

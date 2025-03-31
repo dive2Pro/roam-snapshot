@@ -39,6 +39,7 @@ const getTextByBlockUid = (uid = ""): string => (uid &&
 const getEditTimeByBlockUid = (uid = "") => (uid &&
   window.roamAlphaAPI.pull("[:edit/time]", [":block/uid", uid])?.[":edit/time"]) ||
   0;
+
 const getPageUidByPageTitle = (title: string): string => window.roamAlphaAPI.pull("[:block/uid]", [":node/title", title])?.[":block/uid"] || "";
 class RoamCacheUrl {
   pageTitle = "roam/plugin/PageHistory";
@@ -70,6 +71,7 @@ class RoamCacheUrl {
     } catch (e) {
       // 通过 page/title 获取 uid
       this.pageUid = getPageUidByPageTitle(this.pageTitle);
+      console.log(this)
     }
   }
   saveUrl(url: string) {
@@ -89,5 +91,14 @@ class RoamCacheUrl {
   getUrlChangeTime() {
     return this.url ? getEditTimeByBlockUid(this.firstChildUid) : 0;
   }
+
+  deletePage = () => {
+    console.log(` delete page`)
+    window.roamAlphaAPI.deletePage({
+      page: {
+        title: this.pageTitle
+      },
+    });
+  };
 }
 export const roamCacheUrl = new RoamCacheUrl();
