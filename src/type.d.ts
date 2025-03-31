@@ -39,8 +39,10 @@ type Snapshot = {
 };
 
 type ITEM = {
-  json: Snapshot,
+  json?: Snapshot,
   time: number
+  diff?: any
+  title: string
 }
 
 type DiffSnapshotBlock = {

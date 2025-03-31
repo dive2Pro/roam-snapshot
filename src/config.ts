@@ -3,8 +3,9 @@ import { dbOperator } from "./dbOperator";
 import { CONSTANTS } from "./CONSTANTS";
 import { getKey } from "./CONSTANTS";
 import { roamCacheUrl } from "./RoamCacheUrl";
-import { keys } from "./helper";
+import { deepClone, keys } from "./helper";
 import { cache } from "./cache";
+import * as jsondiffpatch from 'jsondiffpatch';
 
 export function hasUpgrade(v = 1) {
   return API.settings.get(CONSTANTS.VERSION) === v;
@@ -91,7 +92,7 @@ export async function hasRecordInCache(key: string) {
 
 export async function getPageSnapshot(
   page: string
-): Promise<{ json: Snapshot; time: number }[]> {
+): Promise<ITEM[]> {
   try {
     console.time("LOADING");
     const result = await getFromServer(page);
@@ -110,6 +111,42 @@ export async function getPageSnapshot(
     console.timeEnd("LOADING");
   }
 }
+
+
+export async function getPageSnapshotWithDiff(page: string): Promise<ITEM[]> {
+  try {
+    console.time("LOADING");
+    let result = await getFromServer(page);
+    console.log(result, " --- result --- ", getKey(page));
+    if (!result) {
+      // 不能写空, 有可能 result = undefined 是因为数据请求为空
+      // API.settings.set(getKey(page), undefined);
+      return [];
+    }
+
+    result.reverse().forEach((item, index, arr) => {
+      if(item.json) {
+        return
+      }
+      if(item.diff) {
+        
+        item.json = jsondiffpatch.patch(
+          deepClone(arr[index - 1].json),
+          item.diff
+        );
+      }
+    })
+    console.log('result = ==== ', result)
+    return result.reverse();
+  } catch (e) {
+    console.log(e, " --");
+    return [];
+  } finally {
+    console.timeEnd("LOADING");
+  }
+}
+
+
 const compareKeys = [
   "open",
   "string",
@@ -175,23 +212,35 @@ const hasDifference = (a: Snapshot, b: Snapshot) => {
 
 export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
   const old = await getPageSnapshot(pageUid);
+
   // 两个最近的 json 之间有差异, 才插入;
-  const sorted = old.sort((a, b) => {
-    return b.time - a.time;
-  });
+  const sorted = old
+    .sort((a, b) => {
+      return b.time - a.time;
+    })
+    .filter((a) => !a.diff || Object.keys(a.diff || {}).length  !== 0);
+  console.log(`sorted`, sorted)
+  // 插入到前面
   if (sorted.length) {
-    if (hasDifference(sorted[0].json, snapshot)) {
+
+    const jsonDiff = jsondiffpatch
+      .create()
+      .diff(latestSnapshot(sorted), snapshot);
+    if (jsonDiff) {
       sorted.unshift({
-        json: snapshot,
         time: Date.now(),
+        diff: jsonDiff,
+        title: snapshot.title,
       });
     } else {
       return;
     }
   } else {
+    // 新入
     sorted.unshift({
       json: snapshot,
       time: Date.now(),
+      title: snapshot.title
     });
   }
   saveToCache(pageUid, sorted);
@@ -211,7 +260,7 @@ export async function deletePageSnapshot(pageUid: string, time: number) {
 
 export async function diffSnapshot(
   pageUid: string,
-  snapshots: { json: Snapshot; time: number }[],
+  snapshots: ITEM[],
   now: number,
   old: number
 ) {
@@ -224,7 +273,6 @@ export async function diffSnapshot(
   }
   const diff = {};
   diffSnapshots(diff, snapshots[now].json, snapshots[old].json);
-  console.log(diff, snapshots[now], snapshots[old], " ------ dddd");
   return diff;
 }
 
@@ -235,6 +283,7 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       now: now.title,
     };
   }
+  console.log(`DIFF: `, now, old)
   if (!old.children?.length && now.children?.length) {
     diff.block = {
       added: now.children.map((child) => ({
@@ -258,8 +307,6 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       changed: {},
     };
 
-    const nowChildren = now.children.sort(sortByOrder);
-    const oldChildren = old.children.sort(sortByOrder);
     const nowChildrenMap = (now.children || []).reduce((p, c) => {
       p[c.uid] = c;
       return p;
@@ -269,7 +316,6 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       p[c.uid] = c;
       return p;
     }, {} as Record<string, SnapshotBlock>);
-    // TODO: 不以 order 上是否相等为判断新增更新的标准.因为这样会让 只是 order 变化的 block 也被识别为 added 和 deleted
     keys(nowChildrenMap).forEach((key) => {
       if (oldChildrenMap[key]) {
         diffSnapshotBlock(
@@ -298,34 +344,6 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       });
     });
     return;
-    const nowlength = nowChildren.length;
-    const oldlength = oldChildren.length;
-    let order = 0;
-    for (order = 0; order < Math.min(nowlength, oldlength); order++) {
-      diffSnapshotBlock(
-        diff,
-        [now.uid],
-        nowChildren[order],
-        oldChildren[order]
-      );
-    }
-    if (nowlength > oldlength) {
-      nowChildren.slice(order).forEach((child) => {
-        diff.block.added.push({
-          parentUids: [now.uid],
-          ...child,
-          added: true,
-        });
-      });
-    } else if (nowlength < oldlength) {
-      oldChildren.slice(order).forEach((child) => {
-        diff.block.deleted.push({
-          parentUids: [now.uid],
-          ...child,
-          deleted: true,
-        });
-      });
-    }
   }
 };
 
@@ -433,3 +451,16 @@ const fieldEqual = (field: string, v1: unknown, v2: unknown) => {
 
   return v1 === v2;
 };
+
+
+function latestSnapshot(sorted: ITEM[]) {
+  const diffEnd = sorted.findIndex((v) => v.json) - 1;
+
+  const originDiff = sorted[diffEnd + 1].json;
+  let result = originDiff ;
+  for(let i = 0 ; i <= diffEnd; i ++) {
+    jsondiffpatch.patch(deepClone(result), sorted[i].diff);
+  }
+  return result;
+}
+

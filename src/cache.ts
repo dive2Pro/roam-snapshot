@@ -9,7 +9,7 @@ class LocalCache {
   async get(key: string) {
     // 兼容 v1 , 如果本地没有,
     console.log(key, " ---");
-    return dbOperator.get(getKey(key));
+    return dbOperator.get(getKey(key)) as Promise<ITEM[]>;
   }
 }
 

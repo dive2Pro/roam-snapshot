@@ -21,7 +21,7 @@ import {
   diffSnapshot,
   diffSnapshots,
   getIntervalTime,
-  getPageSnapshot,
+  getPageSnapshotWithDiff,
   hasRecordInCache,
   savePageSnapshot,
   sortByOrder,
@@ -33,7 +33,6 @@ import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
-import { initBottomOperators } from "./initBottomOperators";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -552,7 +551,7 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
     setLoading(true);
-    const snapList = (await getPageSnapshot(pageUid)).sort(
+    const snapList = (await getPageSnapshotWithDiff(pageUid)).sort(
       (a, b) => b.time - a.time
     );
     setList(snapList);
@@ -881,7 +880,7 @@ const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
   const id = setInterval(() => {
     SNAP_SHOT_MAP.forEach((item, key) => {
-      console.log("test:", item);
+      // console.log("test:", item);
       if (isExceed(item.end)) {
         recordPage(item);
         SNAP_SHOT_MAP.delete(key);
@@ -902,7 +901,7 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
-  console.log(await hasRecordInCache(uid), "---", uid);
+  // console.log(await hasRecordInCache(uid), "---", uid);
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
   if (!(await hasRecordInCache(uid)) && !newRecordSet.has(uid)) {
     newRecordSet.add(uid);
@@ -923,7 +922,7 @@ const getPageUidFromDom = async (el: HTMLElement) => {
 };
 const mutationTrigger = async (mutation: MutationRecord) => {
   const uid = await getPageUidFromDom(mutation.target as HTMLElement);
-  console.log(mutation.target, " --- ", uid);
+  // console.log(mutation.target, " --- ", uid);
   if (uid) {
     triggerSnapshotRecordByPageUid(uid);
   }
@@ -982,7 +981,7 @@ function checkCodeBlocks(mutation: MutationRecord) {
 }
 
 function listenToChange() {
-  const targetNode = document.getElementById("app");
+  const targetNode = document.querySelector(".roam-app");
   const config = { childList: true, subtree: true, attributes: true };
   const observer = new MutationObserver((mutationList, observer) => {
     for (const mutation of mutationList) {
@@ -1011,7 +1010,7 @@ function listenToChange() {
 
 export function initExtension() {
   startLoop();
-  initBottomOperators();
+  // initBottomOperators();
   listenToChange();
 }
 

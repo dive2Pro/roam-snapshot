@@ -5,7 +5,11 @@ import { roamCacheUrl } from "./RoamCacheUrl";
 import { compatialv1 } from "./compatialv1";
 import { hasUpgrade } from "./config";
 
-export async function syncCache() {
+/**
+ * 
+ * @deprecated no more sync 
+ */
+async function syncCache() {
   const dbOperatorTime = await dbOperator.getUpdateTime();
   // 如果本地缓存的更新时间晚于 url 改变的时间, 触发上传的倒计时
   if (dbOperatorTime > roamCacheUrl.getUrlChangeTime()) {

@@ -1,3 +1,6 @@
+/**
+ * @deprecated 不再支持多机器同步
+ */
 import { Button, Classes, Popover } from "@blueprintjs/core";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
@@ -124,7 +127,7 @@ function BottomOperators() {
     </div>
   );
 }
-export function initBottomOperators() {
+ function initBottomOperators() {
   const app = document.querySelector("#app");
   const el = document.createElement("div");
   el.className = "rm-history-server-el";
