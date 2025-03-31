@@ -45,6 +45,11 @@ type ITEM = {
   title: string
 }
 
+type Block_SNAP = {
+  string: string;
+  time: number;
+}
+
 type DiffSnapshotBlock = {
   open?: {
     old: boolean;

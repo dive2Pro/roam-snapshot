@@ -2,10 +2,9 @@ import { emitCacheChangeEvent } from "./event";
 import { dbOperator } from "./dbOperator";
 import { CONSTANTS } from "./CONSTANTS";
 import { getKey } from "./CONSTANTS";
-import { roamCacheUrl } from "./RoamCacheUrl";
 import { deepClone, keys } from "./helper";
 import { cache } from "./cache";
-import * as jsondiffpatch from 'jsondiffpatch';
+import * as jsondiffpatch from "jsondiffpatch";
 
 export function hasUpgrade(v = 1) {
   return API.settings.get(CONSTANTS.VERSION) === v;
@@ -23,22 +22,20 @@ export async function initConfig(extensionAPI: RoamExtensionAPI) {
     settings: [
       {
         id: CONSTANTS.PAGE_INTERVAL,
-        name: "Local Time Interval",
-        description:
-          "How long should you wait before taking a snapshot of a page after starting to edit it (The unit is minutes)",
+        name: "Page Snapshot Interval",
+        description: "Minutes between automatic page snapshots after editing",
         action: {
           type: "input",
           placeholder: "10",
         },
       },
       {
-        id: CONSTANTS.PAGE_UPLOAD_INTERVAL,
-        name: "Upload Interval",
-        description:
-          "How long before uploading the local cache to Roam Services? (The unit is minutes)",
+        id: CONSTANTS.BLOCK_INTERVAL,
+        name: "Block Snapshot Interval",
+        description: "Minutes between automatic block snapshots after editing",
         action: {
           type: "input",
-          placeholder: "60",
+          placeholder: "5",
         },
       },
     ],
@@ -48,31 +45,11 @@ export async function initConfig(extensionAPI: RoamExtensionAPI) {
 export function getIntervalTime() {
   return +API.settings.get(CONSTANTS.PAGE_INTERVAL) || 10;
 }
-
+export function getBlockIntervalTime() {
+  return +API.settings.get(CONSTANTS.BLOCK_INTERVAL) || 5;
+}
 export function getUploadIntervalTime() {
   return +API.settings.get(CONSTANTS.PAGE_UPLOAD_INTERVAL) || 60;
-}
-
-export async function saveToServer() {
-  const oldUrl = roamCacheUrl.loadUrl()
-  if (oldUrl) {
-    await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete({
-      url: oldUrl,
-    });
-    console.log(`deleted: ${oldUrl}`);
-  }
-  // 将所有的缓存都保存到服务器.
- const allCacheData = await dbOperator.getAllData();
-  console.log("saveToServer: ", JSON.stringify(allCacheData), allCacheData);
-  const url = await (
-    window.roamAlphaAPI as unknown as RoamExtensionAPI
-  ).file.upload({
-    file: new File([JSON.stringify(allCacheData)], `rm-history.json`, {
-      type: "application/json",
-    }),
-    toast: { hide: true },
-  });
-  return roamCacheUrl.saveUrl(url);
 }
 
 async function saveToCache(key: string, value: any) {
@@ -90,13 +67,11 @@ export async function hasRecordInCache(key: string) {
   return !!r;
 }
 
-export async function getPageSnapshot(
-  page: string
-): Promise<ITEM[]> {
+export async function getPageSnapshot(page: string): Promise<ITEM[]> {
   try {
     console.time("LOADING");
     const result = await getFromServer(page);
-    console.log(result, " --- result --- ", getKey(page));
+    // console.log(result, " --- result --- ", getKey(page));
     if (!result) {
       // 不能写空, 有可能 result = undefined 是因为数据请求为空
       // API.settings.set(getKey(page), undefined);
@@ -112,12 +87,11 @@ export async function getPageSnapshot(
   }
 }
 
-
 export async function getPageSnapshotWithDiff(page: string): Promise<ITEM[]> {
   try {
     console.time("LOADING");
     let result = await getFromServer(page);
-    console.log(result, " --- result --- ", getKey(page));
+    // console.log(result, " --- result --- ", getKey(page));
     if (!result) {
       // 不能写空, 有可能 result = undefined 是因为数据请求为空
       // API.settings.set(getKey(page), undefined);
@@ -125,18 +99,17 @@ export async function getPageSnapshotWithDiff(page: string): Promise<ITEM[]> {
     }
 
     result.reverse().forEach((item, index, arr) => {
-      if(item.json) {
-        return
+      if (item.json) {
+        return;
       }
-      if(item.diff) {
-        
+      if (item.diff) {
         item.json = jsondiffpatch.patch(
           deepClone(arr[index - 1].json),
           item.diff
         );
       }
-    })
-    console.log('result = ==== ', result)
+    });
+    console.log("result = ==== ", result);
     return result.reverse();
   } catch (e) {
     console.log(e, " --");
@@ -145,7 +118,6 @@ export async function getPageSnapshotWithDiff(page: string): Promise<ITEM[]> {
     console.timeEnd("LOADING");
   }
 }
-
 
 const compareKeys = [
   "open",
@@ -210,6 +182,25 @@ const hasDifference = (a: Snapshot, b: Snapshot) => {
   return false;
 };
 
+export async function saveBlockSnapshot(blockUid: string, content: string) {
+  const oldblockCache = (await cache.getBlock(blockUid)) || [];
+  if (oldblockCache.length) {
+    const lastBlock = oldblockCache[0];
+    if (lastBlock.string === content) {
+      return;
+    }
+  }
+
+  const newCache = [
+    {
+      string: content,
+      time: Date.now(),
+    },
+    ...oldblockCache,
+  ];
+  console.log("newCache = ", blockUid ,newCache)
+  cache.addBlock(blockUid, newCache);
+}
 export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
   const old = await getPageSnapshot(pageUid);
 
@@ -218,11 +209,10 @@ export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
     .sort((a, b) => {
       return b.time - a.time;
     })
-    .filter((a) => !a.diff || Object.keys(a.diff || {}).length  !== 0);
-  console.log(`sorted`, sorted)
+    .filter((a) => !a.diff || Object.keys(a.diff || {}).length !== 0);
+  console.log(`sorted`, sorted);
   // 插入到前面
   if (sorted.length) {
-
     const jsonDiff = jsondiffpatch
       .create()
       .diff(latestSnapshot(sorted), snapshot);
@@ -240,7 +230,7 @@ export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
     sorted.unshift({
       json: snapshot,
       time: Date.now(),
-      title: snapshot.title
+      title: snapshot.title,
     });
   }
   saveToCache(pageUid, sorted);
@@ -283,7 +273,7 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       now: now.title,
     };
   }
-  console.log(`DIFF: `, now, old)
+  console.log(`DIFF: `, now, old);
   if (!old.children?.length && now.children?.length) {
     diff.block = {
       added: now.children.map((child) => ({
@@ -452,15 +442,13 @@ const fieldEqual = (field: string, v1: unknown, v2: unknown) => {
   return v1 === v2;
 };
 
-
 function latestSnapshot(sorted: ITEM[]) {
   const diffEnd = sorted.findIndex((v) => v.json) - 1;
 
   const originDiff = sorted[diffEnd + 1].json;
-  let result = originDiff ;
-  for(let i = 0 ; i <= diffEnd; i ++) {
+  let result = originDiff;
+  for (let i = 0; i <= diffEnd; i++) {
     jsondiffpatch.patch(deepClone(result), sorted[i].diff);
   }
   return result;
 }
-

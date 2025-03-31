@@ -11,12 +11,14 @@ import { hasUpgrade } from "./config";
  */
 export async function syncCache() {
   const dbOperatorTime = await dbOperator.getUpdateTime();
-
+  console.log(
+    `dbOperatorTime: ${dbOperatorTime}, roamCacheUrl.getUrlChangeTime(): ${roamCacheUrl.getUrlChangeTime()}`
+  )
   // 如果早于 url 改变的时间, 请求 url 上的数据写入到本地缓存
   if (dbOperatorTime < roamCacheUrl.getUrlChangeTime()) {
     await pullFromUrlCacheToLocal();
-    roamCacheUrl.deletePage()
   }
+  roamCacheUrl.deletePage();
 }
 
 async function pullFromUrlCacheToLocal() {

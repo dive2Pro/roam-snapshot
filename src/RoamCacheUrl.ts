@@ -1,15 +1,17 @@
 import { PullBlock } from "roamjs-components/types";
 
 const getNthChildUidByBlockUid = ({
-  blockUid, order,
+  blockUid,
+  order,
 }: {
   blockUid: string;
   order: number;
-}): string => (
-  window.roamAlphaAPI.data.fast.q(
-    `[:find (pull ?c [:block/uid]) :where [?p :block/uid "${blockUid}"] [?p :block/children ?c] [?c :block/order ${order}] ]`
-  )?.[0]?.[0] as PullBlock
-)?.[":block/uid"] || "";
+}): string =>
+  (
+    window.roamAlphaAPI.data.fast.q(
+      `[:find (pull ?c [:block/uid]) :where [?p :block/uid "${blockUid}"] [?p :block/children ?c] [?c :block/order ${order}] ]`
+    )?.[0]?.[0] as PullBlock
+  )?.[":block/uid"] || "";
 const creaetOrGetFirstChildUidByPageUid = async (pageUid: string) => {
   let uid = getNthChildUidByBlockUid({
     blockUid: pageUid,
@@ -33,14 +35,23 @@ const creaetOrGetFirstChildUidByPageUid = async (pageUid: string) => {
   });
   return uid;
 };
-const getTextByBlockUid = (uid = ""): string => (uid &&
-  window.roamAlphaAPI.pull("[:block/string]", [":block/uid", uid])?.[":block/string"]) ||
+const getTextByBlockUid = (uid = ""): string =>
+  (uid &&
+    window.roamAlphaAPI.pull("[:block/string]", [":block/uid", uid])?.[
+      ":block/string"
+    ]) ||
   "";
-const getEditTimeByBlockUid = (uid = "") => (uid &&
-  window.roamAlphaAPI.pull("[:edit/time]", [":block/uid", uid])?.[":edit/time"]) ||
+const getEditTimeByBlockUid = (uid = "") =>
+  (uid &&
+    window.roamAlphaAPI.pull("[:edit/time]", [":block/uid", uid])?.[
+      ":edit/time"
+    ]) ||
   0;
 
-const getPageUidByPageTitle = (title: string): string => window.roamAlphaAPI.pull("[:block/uid]", [":node/title", title])?.[":block/uid"] || "";
+const getPageUidByPageTitle = (title: string): string =>
+  window.roamAlphaAPI.pull("[:block/uid]", [":node/title", title])?.[
+    ":block/uid"
+  ] || "";
 class RoamCacheUrl {
   pageTitle = "roam/plugin/PageHistory";
   pageUid = "";
@@ -51,6 +62,7 @@ class RoamCacheUrl {
   }
   async init() {
     await this.getPageUid();
+    if(!this.pageUid) return;
     await this.getFirstChildUid();
     this.loadUrl();
   }
@@ -59,20 +71,7 @@ class RoamCacheUrl {
   }
 
   async getPageUid() {
-    try {
-      const uid = await window.roamAlphaAPI.util.generateUID();
-      await window.roamAlphaAPI.createPage({
-        page: {
-          title: this.pageTitle,
-          uid,
-        },
-      });
-      this.pageUid = uid;
-    } catch (e) {
-      // 通过 page/title 获取 uid
-      this.pageUid = getPageUidByPageTitle(this.pageTitle);
-      console.log(this)
-    }
+    this.pageUid = getPageUidByPageTitle(this.pageTitle);
   }
   saveUrl(url: string) {
     return window.roamAlphaAPI.updateBlock({
@@ -93,12 +92,12 @@ class RoamCacheUrl {
   }
 
   deletePage = () => {
-    console.log(` delete page`)
-    window.roamAlphaAPI.deletePage({
-      page: {
-        title: this.pageTitle
-      },
-    });
+    if (this.pageUid)
+      window.roamAlphaAPI.deletePage({
+        page: {
+          uid: this.pageUid,
+        },
+      });
   };
 }
 export const roamCacheUrl = new RoamCacheUrl();

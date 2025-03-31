@@ -9,20 +9,16 @@ import {
   SpinnerSize,
   Divider,
 } from "@blueprintjs/core";
-import React, {
-  FC,
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import React, { FC, useEffect, useReducer, useRef, useState } from "react";
 import {
   deletePageSnapshot,
   diffSnapshot,
   diffSnapshots,
+  getBlockIntervalTime,
   getIntervalTime,
   getPageSnapshotWithDiff,
   hasRecordInCache,
+  saveBlockSnapshot,
   savePageSnapshot,
   sortByOrder,
 } from "./config";
@@ -393,24 +389,10 @@ const getChildBlocks = (
         const index = sorted.findIndex((b) => {
           return b && b.uid === addBlock.uid;
         });
-        // log(index," -----@@@" ,uid , " added", addBlock);
-        console.log(
-          index,
-          sorted,
-          "---@@@---",
-          uid,
-          "--@@@@-",
-          addBlock,
-          parentUids,
-          diff
-        );
 
         if (index > -1) {
           sorted.splice(index, 1, addBlock);
-          // sorted[addBlock.order] = addBlock;
         }
-        // console.log("addedblock, ", addBlock, parentUids);
-        // console.log(sorted, added, " added ", nowChildren);
       });
   }
   if (deleted.length) {
@@ -425,7 +407,7 @@ const getChildBlocks = (
       })
       .forEach((delBlock) => {
         sorted.splice(delBlock.order, 0, delBlock);
-        log(delBlock, " del block", sorted);
+        // log(delBlock, " del block", sorted);
       });
   }
   // log(sorted, diff, " ------- diff");
@@ -473,7 +455,7 @@ const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
   if (diffing || !diffResult) {
     return <div>Diffing...</div>;
   }
-  console.log(diffResult.toString(), " string diff");
+  // console.log(diffResult.toString(), " string diff");
 
   return (
     <div
@@ -722,7 +704,12 @@ type Info = {
   end: number;
   uid: string;
 };
+
+type ContentInfo = Info & { 
+  string: string;
+}
 const SNAP_SHOT_MAP = new Map<string, Info>();
+const SNAP_SHOT_BLOCK_MAP = new Map<string, ContentInfo>();
 
 const isExceed = (time: number) => {
   const now = Date.now();
@@ -880,10 +867,15 @@ const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
   const id = setInterval(() => {
     SNAP_SHOT_MAP.forEach((item, key) => {
-      // console.log("test:", item);
       if (isExceed(item.end)) {
         recordPage(item);
         SNAP_SHOT_MAP.delete(key);
+      }
+    });
+    SNAP_SHOT_BLOCK_MAP.forEach((item, key) => {
+      if (isExceed(item.end)) {
+        saveBlockSnapshot(item.uid, item.string);
+        SNAP_SHOT_BLOCK_MAP.delete(key);
       }
     });
   }, minute_1);
@@ -909,6 +901,24 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
   }
 };
 
+const triggerSnapshotRecordByBlockUid = async (uid: string, content: string) => {
+  if(!content) {
+    debugger
+  }
+  if (!SNAP_SHOT_BLOCK_MAP.has(uid))
+    SNAP_SHOT_BLOCK_MAP.set(uid, {
+      start: Date.now(),
+      end: Date.now() + getBlockIntervalTime() * minute_1,
+      uid,
+      string: content
+    });
+  // console.log(await hasRecordInCache(uid), "---", uid);
+  // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
+  // if (!(await hasRecordInCache(uid))) {
+  //   recordPage({ uid });
+  // }
+};
+
 const getPageUidFromDom = async (el: HTMLElement) => {
   const targetEl = el.closest("[data-page-title]");
   const titleFromBlock = targetEl?.getAttribute("data-page-title");
@@ -920,11 +930,31 @@ const getPageUidFromDom = async (el: HTMLElement) => {
     return await getCurrentPageFromApi();
   }
 };
+
+const getBlockUidFromDom = async (el: HTMLElement) => {
+  const id = el.id;
+  if (id) {
+    // 从后往前找到第一个满足条件的 "-" 位置
+    let lastIndex = id.length - 1;
+    while (lastIndex >= 0) {
+      lastIndex = id.lastIndexOf("-", lastIndex);
+      if (lastIndex === -1) break;
+      if (id.length - lastIndex >= 9) break;
+      lastIndex--;
+    }
+    return id.substring(lastIndex + 1);
+  }
+};
 const mutationTrigger = async (mutation: MutationRecord) => {
   const uid = await getPageUidFromDom(mutation.target as HTMLElement);
-  // console.log(mutation.target, " --- ", uid);
   if (uid) {
     triggerSnapshotRecordByPageUid(uid);
+  }
+  const blockUid = await getBlockUidFromDom(mutation.target as HTMLElement);
+  console.log(mutation.target, " --- ", uid, blockUid);
+
+  if (blockUid) {
+    triggerSnapshotRecordByBlockUid(blockUid, (mutation.target as HTMLElement).innerHTML);
   }
 };
 
@@ -989,7 +1019,6 @@ function listenToChange() {
         if (checkCodeBlocks(mutation)) {
           return;
         }
-        // console.log(mutation.target, mutation)
         mutationTrigger(mutation);
       } else if (mutation.type === "attributes") {
         if (checkCodeBlocks(mutation)) {
@@ -1012,6 +1041,29 @@ export function initExtension() {
   startLoop();
   // initBottomOperators();
   listenToChange();
+  listenToBlockChange();
+}
+
+function listenToBlockChange() {
+  document.arrive(".roam-block", (newElem) => {
+    // console.log("block create", newElem);
+    getBlockUidFromDom(newElem as HTMLElement).then((uid) => {
+      if (uid) {
+        triggerSnapshotRecordByBlockUid(uid, newElem.innerHTML);
+      }
+    })
+  });
+  document.leave(".roam-block", (newElem) => {
+    getBlockUidFromDom(newElem as HTMLElement).then((uid) => {
+      if (uid) {
+        SNAP_SHOT_BLOCK_MAP.delete(uid);
+      }
+    });
+  });
+  extension_helper.on_uninstall(() => {
+    document.unbindArrive(".roam-block");
+    document.unbindLeave(".roam-block");
+  });
 }
 
 type NodePath = number[];
@@ -1075,5 +1127,3 @@ function Snapping() {
 
   return <div>{content}</div>;
 }
-
-

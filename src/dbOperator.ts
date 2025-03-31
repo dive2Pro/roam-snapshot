@@ -1,38 +1,38 @@
 import { openDB } from "idb";
 import { CONSTANTS } from "./CONSTANTS";
 
-const dbPromise = openDB("rm-history", 1, {
+const dbPromise = openDB("rm-history", 2, {
   upgrade(db) {
-    db.createObjectStore(CONSTANTS.DB_STORE);
+    if(!db.objectStoreNames.contains(CONSTANTS.DB_STORE)) {
+      db.createObjectStore(CONSTANTS.DB_STORE);
+    }
+    db.createObjectStore(CONSTANTS.DB_BLOCK_STORE);
   },
 });
 
+dbPromise.catch((err) => {
+  console.error("Failed to open database:", err);
+})
+
 class DBOperator {
-  async getAllData() {
-    const db = await dbPromise;
-    const allCacheKeys = await db.getAllKeys(CONSTANTS.DB_STORE);
-    const allCacheData: [IDBValidKey, any][] = [];
-    for await (const k of allCacheKeys) {
-      allCacheData.push([k, await db.get(CONSTANTS.DB_STORE, k)]);
-    }
-    return allCacheData;
+  constructor(public dbName = CONSTANTS.DB_STORE) {
   }
   updateTimeKey = "updateTime";
   async update(k: string, value: any) {
-    const r = await (await dbPromise).put(CONSTANTS.DB_STORE, value, k);
+    const r = await(await dbPromise).put(this.dbName, value, k);
     this.updateTime();
 
     return r;
   }
 
   async get(key: string) {
-    return (await dbPromise).get(CONSTANTS.DB_STORE, key);
+    return (await dbPromise).get(this.dbName, key);
   }
 
   private async updateTime() {
     await (
       await dbPromise
-    ).put(CONSTANTS.DB_STORE, Date.now(), this.updateTimeKey);
+    ).put(this.dbName, Date.now(), this.updateTimeKey);
   }
 
   async getUpdateTime() {
@@ -41,7 +41,7 @@ class DBOperator {
 
   async replaceWith(data: [string, any][]) {
     console.log("DBOperator: replaceWith: ", data);
-    const tx = (await dbPromise).transaction(CONSTANTS.DB_STORE, "readwrite");
+    const tx = (await dbPromise).transaction(this.dbName, "readwrite");
     await Promise.all(
       data.map((item) => {
         return tx.store.put(item[1], item[0]);
@@ -51,7 +51,10 @@ class DBOperator {
   }
 
   async hasRecord(key: string) {
-    return !!(await (await dbPromise).get(CONSTANTS.DB_STORE, key));
+    return !!(await (await dbPromise).get(this.dbName, key));
   }
 }
+ 
+
 export const dbOperator = new DBOperator();
+export const blockDBOperator = new DBOperator(CONSTANTS.DB_BLOCK_STORE);
