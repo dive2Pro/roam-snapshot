@@ -55,6 +55,9 @@ export function BlockHistory() {
 
   const lastestString = snapshots[snapshots.length - 1]?.string;
   const activeSnapShot = snapshots[activeSnapShotIndex];
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playIntervalRef = React.useRef(null);
+
   useEffect(() => {
     document.querySelector(".timeline-point.active")?.scrollIntoView({
       behavior: "smooth",
@@ -62,9 +65,13 @@ export function BlockHistory() {
       inline: "center",
     });
   }, [activeSnapShotIndex]);
+  const stopPlaying = () => {
+    clearInterval(playIntervalRef.current);
+    playIntervalRef.current = null;
+    setIsPlaying(false);
+  };
   return (
     <Dialog
-      title="Block Snapshots"
       isOpen={open}
       className="rm-snapshot-block"
       onClose={() => setOpen(false)}
@@ -112,7 +119,6 @@ export function BlockHistory() {
               return (
                 <Tooltip
                   content={`${dayjs(point.time).format("YYYY/MM/DD HH:mm")}`}
-                  position={Position.TOP}
                 >
                   <div
                     className={`timeline-point ${
@@ -151,6 +157,7 @@ export function BlockHistory() {
               icon={"step-backward"}
               disabled={activeSnapShotIndex <= 0}
               onClick={() => {
+                stopPlaying();
                 setActiveSnapshotIndex(0);
               }}
               aria-label="Jump to earliest"
@@ -160,15 +167,41 @@ export function BlockHistory() {
               icon={"fast-backward"}
               disabled={activeSnapShotIndex <= 0}
               onClick={() => {
+                stopPlaying();
+
                 setActiveSnapshotIndex(activeSnapShotIndex - 1);
               }}
               aria-label="Previous version"
             />
-            {/* Large Play Button */}
             <Button
               className="play-button-large"
-              icon={"play"}
+              large
+              icon={isPlaying ? "pause" : "play"}
               aria-label="Play history"
+              onClick={() => {
+                // Implement the logic for playing the history
+                // Implement the logic for playing the history
+                if (isPlaying) {
+                  // Stop playing
+                  clearInterval(playIntervalRef.current);
+                  playIntervalRef.current = null;
+                  setIsPlaying(false);
+                } else {
+                  // Start playing
+                  setIsPlaying(true);
+
+                  // Set interval to move through snapshots
+                  playIntervalRef.current = setInterval(() => {
+                    setActiveSnapshotIndex((prevIndex) => {
+                      // If we're at the end, go back to the beginning
+                      if (prevIndex === snapshots.length - 1) {
+                        setIsPlaying(false);
+                      }
+                      return Math.min(prevIndex + 1, snapshots.length - 1);
+                    });
+                  }, 1500); // Change snapshot every 1.5 seconds
+                }
+              }}
             />
             <Button
               minimal={true}
@@ -176,6 +209,8 @@ export function BlockHistory() {
               icon={"fast-forward"}
               aria-label="Next version"
               onClick={() => {
+                stopPlaying();
+
                 setActiveSnapshotIndex(activeSnapShotIndex + 1);
               }}
             />
@@ -185,6 +220,7 @@ export function BlockHistory() {
               icon={"step-forward"}
               aria-label="Jump to latest"
               onClick={() => {
+                stopPlaying();
                 setActiveSnapshotIndex(snapshots.length - 1);
               }}
             />
