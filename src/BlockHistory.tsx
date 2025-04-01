@@ -64,12 +64,15 @@ export function BlockHistory() {
   const playIntervalRef = React.useRef(null);
 
   useEffect(() => {
-    document.querySelector(".timeline-point.active")?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  }, [activeSnapShotIndex]);
+    setTimeout(() => {
+      document.querySelector(".timeline-point.active")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }, 200);
+  }, [activeSnapShotIndex, open]);
+
   const stopPlaying = () => {
     clearInterval(playIntervalRef.current);
     playIntervalRef.current = null;
