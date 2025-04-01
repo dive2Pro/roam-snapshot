@@ -256,6 +256,12 @@ export function BlockHistory() {
                       onClick={() => {
                         setRestoring(true);
                         setTimeout(async () => {
+                          await window.roamAlphaAPI.updateBlock({
+                            block: {
+                              uid: uidRef.current,
+                              string: activeSnapShot?.string,
+                            },
+                          });
                           await saveBlockSnapshot(
                             uidRef.current,
                             activeSnapShot?.string
