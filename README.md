@@ -1,13 +1,21 @@
+# Roam History
+
+A Roam Research plugin that provides comprehensive version control for your pages and blocks, allowing you to track, view, and restore historical versions of your content.
+
+
 ## Table of Contents
-- [Table of Contents](#table-of-contents)
-- [Page History](#page-history)
-  - [Access page history](#access-page-history)
-  - [Restore past page history snapshots](#restore-past-page-history-snapshots)
-- [Block Timeline](#block-timeline)
-- [Configure Snapshot Intervals](#configure-snapshot-intervals)
-- [Changelog](#changelog)
-  - [v3](#v3)
-  - [v2](#v2)
+- [Roam History](#roam-history)
+  - [Table of Contents](#table-of-contents)
+  - [Page History](#page-history)
+    - [Access page history](#access-page-history)
+    - [Restore past page history snapshots](#restore-past-page-history-snapshots)
+  - [Block Timeline](#block-timeline)
+  - [Configure Snapshot Intervals](#configure-snapshot-intervals)
+  - [Changelog](#changelog)
+    - [v3](#v3)
+    - [v2](#v2)
+
+
 
 ## Page History
 The `Page history` feature lets you see all changes made to a page, when. You can view and restore past versions of any Roam page going back indefinitely.
