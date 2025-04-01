@@ -1,14 +1,19 @@
-# Page History
+## Table of Contents
+- [Table of Contents](#table-of-contents)
+- [Page History](#page-history)
+  - [Access page history](#access-page-history)
+  - [Restore past page history snapshots](#restore-past-page-history-snapshots)
+- [Block Timeline](#block-timeline)
+  - [](#)
+- [Changelog](#changelog)
+  - [v3](#v3)
+  - [v2](#v2)
+
+## Page History
 The `Page history` feature lets you see all changes made to a page, when. You can view and restore past versions of any Roam page going back indefinitely.
 
-## Changelog
 
-### v2
-
-- Now, the cache is saved locally first, which makes the saving and viewing process more efficient. All history data is saved into one file, and the file URL is stored in [[roam/plugin/page history]] as the first child block.
-- Local cache will be automatically uploaded to Roam Service every 60 minutes after the first local cache is created (you can also change the interval time in the settings). You can click the button in the bottom right corner of the screen to upload immediately.
-
-## Access page history
+### Access page history
 
 - Click the ••• menu at the top right of any Roam page. Choose Page history.
 
@@ -24,7 +29,7 @@ Note: Here's how page history functions!
 
 If you are **actively editing** a page, a snapshot of the current version of the page will be captured every **ten minutes** (You can change it in settings panel).
 
-## Restore past page history snapshots
+### Restore past page history snapshots
 
 - You can restore an entire past version so it becomes your current version of the page.
 
@@ -32,3 +37,23 @@ If you are **actively editing** a page, a snapshot of the current version of the
 ![embed mode](https://user-images.githubusercontent.com/23192045/212555992-d058c221-a59c-4774-9cf4-a62f8b064a6a.gif)
 
 
+
+## Block Timeline
+
+Now, every block created generates a complete snapshot over time to ensure that the block's data is not lost due to various unexpected circumstances. You can right click the dot icon in front of a block and select "Extensions -> History: Block Timeline" from the block menu to view the entire lifecycle changes of any block and restore it to any previous version.
+
+### 
+
+
+## Changelog
+
+### v3
+
+- Rename to Roam History
+- Remove sync data feature. All data is now saved locally
+- Add block timeline feature
+
+### v2
+
+- Now, the cache is saved locally first, which makes the saving and viewing process more efficient. All history data is saved into one file, and the file URL is stored in [[roam/plugin/page history]] as the first child block.
+- Local cache will be automatically uploaded to Roam Service every 60 minutes after the first local cache is created (you can also change the interval time in the settings). You can click the button in the bottom right corner of the screen to upload immediately.

@@ -30,6 +30,7 @@
     "node_modules"
   ],
   "files": [
-    "node_modules/roamjs-components/types/index.d.ts", "./src/compatialv1.ts", "./src/dbOperator.ts", "./src/CONSTANTS.ts", "./src/RemoteCache.ts", "src/RoamCacheUrl.ts", "./src/cache.ts", "./src/syncCache.ts", 
+    "node_modules/roamjs-components/types/index.d.ts", "./src/compatialv1.ts", "./src/dbOperator.ts", "./src/CONSTANTS.ts", "./src/RemoteCache.ts", "src/RoamCacheUrl.ts", "./src/cache.ts", "./src/syncCache.ts",
+    "./src/BlockHistory.tsx", 
   ]
 }
