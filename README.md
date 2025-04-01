@@ -4,7 +4,6 @@
   - [Access page history](#access-page-history)
   - [Restore past page history snapshots](#restore-past-page-history-snapshots)
 - [Block Timeline](#block-timeline)
-  - [](#)
 - [Changelog](#changelog)
   - [v3](#v3)
   - [v2](#v2)
@@ -42,7 +41,28 @@ If you are **actively editing** a page, a snapshot of the current version of the
 
 Now, every block created generates a complete snapshot over time to ensure that the block's data is not lost due to various unexpected circumstances. You can right click the dot icon in front of a block and select "Extensions -> History: Block Timeline" from the block menu to view the entire lifecycle changes of any block and restore it to any previous version.
 
-### 
+
+https://github.com/user-attachments/assets/850662a6-bee7-435e-8793-ac1966d9bc75
+
+
+By playing back the block history, you can view the entire lifecycle changes of a block. The information and its transformation process will never be lost again.
+
+
+
+https://github.com/user-attachments/assets/ff96af0a-a040-4818-9a5c-99eeaa8b8c62
+
+When there are too many historical versions of a block, scroll through the timeline to view all version timestamps.
+
+https://github.com/user-attachments/assets/91854fa7-3758-42cc-882a-2b26dd1789b3
+
+Click the button on the player to quickly jump to view the earliest historical version or the latest current version.
+
+
+https://github.com/user-attachments/assets/3e4311bc-e6a9-41fc-bd95-3d4d2ee0915b
+
+Restoring a block version is equivalent to editing that block, and this edit record will also appear in your page's edit history, ensuring effective secondary protection of your information and data.
+
+
 
 
 ## Changelog
