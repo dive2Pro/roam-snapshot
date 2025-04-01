@@ -7,15 +7,18 @@ import {
   Button,
 } from "@blueprintjs/core";
 import dayjs from "dayjs";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { cache } from "./cache";
 import { DiffString } from "./comps/DiffString";
+import { saveBlockSnapshot } from "./config";
 
 export function BlockHistory() {
   const [open, setOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   // 修改 timelinePoints 的实现方式
   const [snapshots, setSnapshots] = useState([]);
   const [activeSnapShotIndex, setActiveSnapshotIndex] = useState(0);
+  let uidRef = useRef("")
   useEffect(() => {
     const label = "Block Snapshots";
     window.roamAlphaAPI.ui.blockContextMenu.addCommand({
@@ -27,6 +30,7 @@ export function BlockHistory() {
       callback: async (e) => {
         const readBlockHistories = async () => {
           const blockHistories = await cache.getBlock(e["block-uid"]);
+          uidRef.current = e["block-uid"];
           if (!blockHistories) {
             // 写入缓存
             await cache.addBlock(e["block-uid"], [
@@ -230,7 +234,22 @@ export function BlockHistory() {
           <div className="action-button-section">
             <Button
               intent={"danger"} // Or use custom class for specific red
-              text="恢复此版本"
+              text="Restore"
+              loading={restoring}
+              onClick={async () => {
+                // 
+                setRestoring(true);
+                console.log({ activeSnapShot })
+                await window.roamAlphaAPI.updateBlock({
+                  block: {
+                    uid: uidRef.current,
+                    string: activeSnapShot.string,
+                  },
+                });
+                saveBlockSnapshot(uidRef.current, activeSnapShot.string)
+                setRestoring(false);
+                setOpen(false);
+              }}
             />
           </div>
         </div>
