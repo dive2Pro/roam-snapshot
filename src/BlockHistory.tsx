@@ -12,6 +12,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { cache } from "./cache";
 import { DiffString } from "./comps/DiffString";
 import { saveBlockSnapshot } from "./config";
+import { emitBlockChangeEvent } from "./event";
 
 export function BlockHistory() {
   const [open, setOpen] = useState(false);
@@ -236,6 +237,7 @@ export function BlockHistory() {
               position="bottom"
               captureDismiss
               modifiers={{}}
+              disabled={isPlaying}
               content={
                 <Card style={{}}>
                   <h5>
@@ -262,6 +264,17 @@ export function BlockHistory() {
                               string: activeSnapShot?.string,
                             },
                           });
+                          const pageUid = window.roamAlphaAPI.q(`
+                            [
+                              :find ?page-uid .
+                              :where
+                              [?block :block/uid "${uidRef.current}"]
+                              [?page :block/page ?block-uid]
+                              [?page :block/uid ?page-uid]
+                            ]
+                            `);
+                          console.log({ pageUid })
+                          emitBlockChangeEvent(pageUid as unknown as string);
                           await saveBlockSnapshot(
                             uidRef.current,
                             activeSnapShot?.string
@@ -278,7 +291,12 @@ export function BlockHistory() {
                 </Card>
               }
             >
-              <Button intent={"danger"} text="Restore" loading={restoring} />
+              <Button
+                disabled={isPlaying}
+                intent={"danger"}
+                text="Restore"
+                loading={restoring}
+              />
             </Popover>
           </div>
         </div>

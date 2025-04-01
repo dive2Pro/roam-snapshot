@@ -1,12 +1,12 @@
-export function emitCacheChangeEvent(uid: string) {
-  const event = new CustomEvent<string>("cache-change", { detail: uid });
+export function emitBlockChangeEvent(uid: string) {
+  const event = new CustomEvent<string>("block-change", { detail: uid });
   document.dispatchEvent(event);
 }
 
-export function onCacheChangeEvent(fn: (event: unknown) => void) {
-  document.addEventListener("cache-change", fn);
+export function onBlockChangeEvent(fn: (event: unknown) => void) {
+  document.addEventListener("block-change", fn);
   return () => {
-    document.removeEventListener("cache-change", fn);
+    document.removeEventListener("block-change", fn);
   };
 }
 

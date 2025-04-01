@@ -30,6 +30,7 @@ Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
 import { DiffString } from "./comps/DiffString";
+import { onBlockChangeEvent } from "./event";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -987,6 +988,12 @@ function checkCodeBlocks(mutation: MutationRecord) {
 }
 
 function listenToChange() {
+  const off = onBlockChangeEvent((evt: { detail:  string  }) => {
+    triggerSnapshotRecordByPageUid(evt.detail);
+  });
+  extension_helper.on_uninstall(() => {
+    off()
+  })
   const targetNode = document.querySelector(".roam-app");
   const config = { childList: true, subtree: true, attributes: true };
   const observer = new MutationObserver((mutationList, observer) => {
@@ -1015,7 +1022,6 @@ function listenToChange() {
 
 export function initExtension() {
   startLoop();
-  // initBottomOperators();
   listenToChange();
   listenToBlockChange();
 }
@@ -1063,43 +1069,4 @@ function forEachNode(
     callback(node);
     forEachNode(node.childNodes, callback);
   }
-}
-
-function Snapping() {
-  const forceUpdate = useReducer((a) => a + 1, 0)[1];
-
-  const content = [...SNAP_SHOT_MAP.entries()].map(([key, info]) => {
-    return (
-      <div>
-        <div>
-          {key}: {info.start} - {info.end}
-        </div>
-        <ButtonGroup>
-          <Button
-            small
-            onClick={() => {
-              SNAP_SHOT_MAP.delete(key);
-              forceUpdate();
-            }}
-          >
-            Remove
-          </Button>
-          <Divider />
-          <Button
-            small
-            intent="primary"
-            onClick={() => {
-              SNAP_SHOT_MAP.delete(key);
-              recordPage(info);
-              forceUpdate();
-            }}
-          >
-            Writing
-          </Button>
-        </ButtonGroup>
-      </div>
-    );
-  });
-
-  return <div>{content}</div>;
 }

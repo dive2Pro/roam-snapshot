@@ -29,8 +29,7 @@ export const appendToTopbar = (name: string) => {
 };
 
 
-// TODO: change时间
-export const minute_1 = 10 * 1 * 60;
+export const minute_1 = 1000 * 1 * 60;
 const minute_10 = minute_1 * 10;
 export const keys = <T extends {}>(obj: T) => {
   return Object.keys(obj) as unknown as (keyof T)[];

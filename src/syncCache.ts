@@ -1,9 +1,6 @@
 import { Toaster } from "@blueprintjs/core";
-import { emitCacheChangeEvent } from "./event";
 import { dbOperator } from "./dbOperator";
 import { roamCacheUrl } from "./RoamCacheUrl";
-import { compatialv1 } from "./compatialv1";
-import { hasUpgrade } from "./config";
 
 /**
  *

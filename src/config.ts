@@ -1,4 +1,3 @@
-import { emitCacheChangeEvent } from "./event";
 import { dbOperator } from "./dbOperator";
 import { CONSTANTS } from "./CONSTANTS";
 import { getKey } from "./CONSTANTS";
@@ -55,7 +54,6 @@ export function getUploadIntervalTime() {
 async function saveToCache(key: string, value: any) {
   await cache.add(getKey(key), value);
   // 一旦有记录, 就记录到本地, 触发显示倒计时
-  emitCacheChangeEvent(key);
 }
 
 async function getFromServer(key: string) {
