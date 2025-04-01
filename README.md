@@ -4,6 +4,7 @@
   - [Access page history](#access-page-history)
   - [Restore past page history snapshots](#restore-past-page-history-snapshots)
 - [Block Timeline](#block-timeline)
+- [Configure Snapshot Intervals](#configure-snapshot-intervals)
 - [Changelog](#changelog)
   - [v3](#v3)
   - [v2](#v2)
@@ -62,7 +63,11 @@ https://github.com/user-attachments/assets/3e4311bc-e6a9-41fc-bd95-3d4d2ee0915b
 
 Restoring a block version is equivalent to editing that block, and this edit record will also appear in your page's edit history, ensuring effective secondary protection of your information and data.
 
-
+## Configure Snapshot Intervals
+- Open Roam plugin settings
+- Click the `History` tab
+- Set custom snapshot intervals for both pages and blocks (in minutes)
+- Default intervals: 10 minutes for pages, 5 minutes for blocks
 
 
 ## Changelog
