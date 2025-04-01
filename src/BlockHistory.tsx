@@ -20,7 +20,7 @@ export function BlockHistory() {
   const [activeSnapShotIndex, setActiveSnapshotIndex] = useState(0);
   let uidRef = useRef("")
   useEffect(() => {
-    const label = "Block Snapshots";
+    const label = "History: Block Timeline";
     window.roamAlphaAPI.ui.blockContextMenu.addCommand({
       label,
       // @ts-ignore
