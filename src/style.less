@@ -1,5 +1,5 @@
 .diff-styles() {
-.diff-highlight {
+  .diff-highlight {
     position: relative;
     z-index: 1;
   }
@@ -23,6 +23,7 @@
     }
   }
 }
+
 .rm-snapshot {
   display: flex;
   height: 80vh;
@@ -149,7 +150,13 @@
   }
 
   &-block {
+    user-select: none;
     .diff-styles();
+
+    .timeline-container {
+      margin: 20px 12px 0px;
+    }
+
     .version-history-container {
       padding: 20px;
       background-color: #f8f9fa;
@@ -264,11 +271,23 @@
     }
 
     .metadata-section {
-      flex: 1;
-      /* Allow metadata to take available space */
-      min-width: 200px;
-      /* Prevent it from becoming too small */
       text-align: left;
+      min-width: 166px;
+    }
+
+    .timeline-steps {
+      display: flex;
+      position: relative;
+      padding: 0px 16px;
+      overflow: auto;
+      scrollbar-width: none;
+      /* Firefox */
+      -ms-overflow-style: none;
+
+      /* IE 和 Edge */
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
 
     .metadata-section p {
