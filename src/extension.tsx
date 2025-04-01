@@ -29,6 +29,7 @@ import calendar from "dayjs/plugin/calendar";
 Dayjs.extend(calendar);
 import "./style.less";
 import { diff } from "./diff-string";
+import { DiffString } from "./comps/DiffString";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -435,38 +436,6 @@ const DiffOpen: FC<{
     ></span>
   );
 };
-const DiffString: FC<{ diff: { old: string; now: string } }> = (props) => {
-  const [diffResult, setDiffResult] = useState<ReturnType<typeof diff.diff>>();
-  const [diffing, setDiffing] = useState(false);
-  useEffect(() => {
-    const process = async () => {
-      setDiffing(true);
-      await delay(100);
-      const result = await diff.diff(props.diff.old, props.diff.now);
-
-      setDiffResult(result);
-      setDiffing(false);
-    };
-    process();
-
-    // return JsDiff.diffString(props.diff.old, props.diff.now);
-  }, [props.diff]);
-
-  if (diffing || !diffResult) {
-    return <div>Diffing...</div>;
-  }
-  // console.log(diffResult.toString(), " string diff");
-
-  return (
-    <div
-      dangerouslySetInnerHTML={{
-        __html: `${diffResult.toString().richText}`,
-      }}
-    >
-      {diffResult.richText}
-    </div>
-  );
-};
 
 const PreviewTitle: FC<{ diff?: { old: string; now: string } }> = (props) => {
   if (props.diff) {
@@ -705,9 +674,9 @@ type Info = {
   uid: string;
 };
 
-type ContentInfo = Info & { 
+type ContentInfo = Info & {
   string: string;
-}
+};
 const SNAP_SHOT_MAP = new Map<string, Info>();
 const SNAP_SHOT_BLOCK_MAP = new Map<string, ContentInfo>();
 
@@ -900,17 +869,21 @@ const triggerSnapshotRecordByPageUid = async (uid: string) => {
     recordPage({ uid });
   }
 };
+function removeHtmlTags(html: string) {
+  return html.replace(/<[^>]*>/g, "");
+}
+const triggerSnapshotRecordByBlockUid = async (
+  uid: string,
+  content: string
+) => {
+  
 
-const triggerSnapshotRecordByBlockUid = async (uid: string, content: string) => {
-  if(!content) {
-    debugger
-  }
   if (!SNAP_SHOT_BLOCK_MAP.has(uid))
     SNAP_SHOT_BLOCK_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getBlockIntervalTime() * minute_1,
       uid,
-      string: content
+      string: removeHtmlTags(content),
     });
   // console.log(await hasRecordInCache(uid), "---", uid);
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
@@ -954,7 +927,10 @@ const mutationTrigger = async (mutation: MutationRecord) => {
   console.log(mutation.target, " --- ", uid, blockUid);
 
   if (blockUid) {
-    triggerSnapshotRecordByBlockUid(blockUid, (mutation.target as HTMLElement).innerHTML);
+    triggerSnapshotRecordByBlockUid(
+      blockUid,
+      (mutation.target as HTMLElement).innerHTML
+    );
   }
 };
 
@@ -1051,7 +1027,7 @@ function listenToBlockChange() {
       if (uid) {
         triggerSnapshotRecordByBlockUid(uid, newElem.innerHTML);
       }
-    })
+    });
   });
   document.leave(".roam-block", (newElem) => {
     getBlockUidFromDom(newElem as HTMLElement).then((uid) => {

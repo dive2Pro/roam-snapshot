@@ -1,3 +1,28 @@
+.diff-styles() {
+.diff-highlight {
+    position: relative;
+    z-index: 1;
+  }
+
+  .diff-add {
+    .diff-highlight();
+    background-color: #abf2bc;
+
+    .bp3-dark & {
+      background-color: rgba(46, 160, 67, 0.4);
+    }
+  }
+
+  .diff-remove {
+    .diff-highlight();
+    text-decoration-line: line-through;
+    background-color: rgba(255, 129, 130, 0.4);
+
+    .bp3-dark & {
+      background-color: rgba(248, 81, 73, 0.4);
+    }
+  }
+}
 .rm-snapshot {
   display: flex;
   height: 80vh;
@@ -17,6 +42,7 @@
     align-items: center;
     z-index: 20;
   }
+
   .bp3-dark & {
     background-color: var(--dark-bg);
   }
@@ -24,6 +50,7 @@
   .rm-snapshot-list-view {
     flex: 1;
     background-color: #EBF1F5;
+
     .bp3-dark & {
       background-color: var(--dark-bg-3);
     }
@@ -31,9 +58,12 @@
 
   &-view {
     width: calc(100% - 240px);
+
     .roam-article {
-      margin: 27px;;
+      margin: 27px;
+      ;
     }
+
     &-empty {
       height: 100%;
       width: 100%;
@@ -71,34 +101,15 @@
     }
   }
 
-  .diff-highlight {
-    position: relative;
-    z-index: 1;
-  }
-
-  .diff-add {
-    .diff-highlight();
-    background-color: #abf2bc;
-    .bp3-dark & {
-      background-color: rgba(46, 160, 67, 0.4);
-    }
-  }
-
-  .diff-remove {
-    .diff-highlight();
-    text-decoration-line: line-through;
-    background-color: rgba(255, 129, 130, 0.4);
-      .bp3-dark & {
-          background-color: rgba(248, 81, 73, 0.4);
-        }
-  }
 
   .blob-addition {
     background-color: #e6ffec;
     padding: 3px 0;
+
     .bp3-dark & {
       background-color: rgba(46, 160, 67, 0.15);
     }
+
     .blob-addition {
       background-color: inherit;
     }
@@ -107,9 +118,11 @@
   .blob-deletion {
     padding: 3px 0;
     background-color: #ffebe9;
+
     .bp3-dark & {
       background-color: rgba(248, 81, 73, 0.15);
     }
+
     .blob-deletion {
       background-color: inherit;
     }
@@ -134,12 +147,165 @@
   .roam-block-container {
     position: relative;
   }
+
+  &-block {
+    .diff-styles();
+    .version-history-container {
+      padding: 20px;
+      background-color: #f8f9fa;
+      /* Light background for contrast */
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-family: sans-serif;
+      /* Or your app's font */
+      width: 100%;
+      /* Adjust as needed */
+      max-width: 900px;
+      /* Example max width */
+      margin: 20px auto;
+    }
+
+    .timeline-wrapper {
+      position: relative;
+      height: 40px;
+      /* Increased height to accommodate tooltip marker */
+      margin-bottom: 25px;
+      padding: 0 10px;
+      /* Padding to prevent points hitting edges */
+    }
+
+    .timeline-line {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      /* Match wrapper padding */
+      right: 10px;
+      /* Match wrapper padding */
+      height: 2px;
+      background-color: #adb5bd;
+      /* Light grey line */
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+
+    .timeline-point {
+      position: absolute;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      background-color: #6c757d;
+      /* Dark grey points */
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 2;
+      transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .timeline-point:hover {
+      background-color: #495057;
+      /* Darken on hover */
+    }
+
+    .timeline-point.active {
+      background-color: #dc3545;
+      /* Red active point */
+      box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.3);
+      /* Red glow */
+    }
+
+    /* Specific marker for the tooltip point, styled like the static label in the image */
+    .timeline-tooltip-marker {
+      position: absolute;
+      bottom: 100%;
+      /* Position above the dot */
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      /* Move slightly up */
+      background-color: #333;
+      /* Dark background */
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 3;
+
+      /* Above timeline points */
+      /* Create the downward pointing triangle */
+      &::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+      }
+
+      /* Hide the marker itself, tooltip will show on hover */
+      /* To make it always visible, remove 'display: none' and add content */
+      /* display: none; */
+
+      /* --- Static Tooltip/Label Styling (Alternative) --- */
+      /* If you want it always visible like the image */
+      content: '跳到最早时间点';
+      /* Add text directly */
+    }
+
+    .controls-metadata-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      /* Spacing between sections */
+      padding: 0 10px;
+    }
+
+    .metadata-section {
+      flex: 1;
+      /* Allow metadata to take available space */
+      min-width: 200px;
+      /* Prevent it from becoming too small */
+      text-align: left;
+    }
+
+    .metadata-section p {
+      margin: 2px 0;
+      /* Reduce default paragraph margin */
+      font-size: 13px;
+      /* Slightly smaller font */
+      color: #6c757d;
+      /* Muted text color */
+    }
+
+    .playback-controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      /* Spacing between control buttons */
+    }
+
+
+
+    .play-button-large .bp4-icon {
+      /* Target icon specifically if needed */
+      font-size: 20px;
+      /* Adjust icon size if necessary */
+    }
+
+
+    .action-button-section {
+      /* Adjust alignment or spacing if needed */
+    }
+  }
 }
 
 .rm-history-server-el {
-    position: fixed;
-    right: 30px;
-    bottom: 30px;
-    border-radius: 50%;
-    overflow: hidden;
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  border-radius: 50%;
+  overflow: hidden;
 }
