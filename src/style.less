@@ -155,6 +155,8 @@
 
     .timeline-container {
       margin: 20px 12px 0px;
+      margin-top: 20px;
+      min-height: 100px;
     }
 
     .version-history-container {
@@ -183,16 +185,62 @@
 
     .timeline-line {
       position: absolute;
-      top: 50%;
-      left: 10px;
       /* Match wrapper padding */
-      right: 10px;
-      /* Match wrapper padding */
+      top: 20%;
+      left: 35px;
+      right: 35px;
       height: 2px;
       background-color: #adb5bd;
       /* Light grey line */
       transform: translateY(-50%);
       z-index: 1;
+    }
+
+    .timeline-step {
+      position: relative;
+
+      &:first-child:after {
+        content: " ";
+        position: absolute;
+        height: 2px;
+        width: 35px;
+        background: #E6EEF3;
+        left: -41px;
+        top: 49%;
+        z-index: 2;
+      }
+
+      &.active {
+        &:first-child:after {
+          left: -46px;
+        }
+        &:last-child:after {
+          right: -46px;
+        }
+      }
+
+      &:last-child:after {
+        content: " ";
+        position: absolute;
+        height: 2px;
+        width: 35px;
+        background: #E6EEF3;
+        right: -41px;
+        top: 49%;
+        z-index: 2;
+      }
+    }
+
+    .timeline-text {
+      color: #6c757d;
+      position: relative;
+      top: 70px;
+      left: -30px;
+      font-size: 10px;
+      left: -30px;
+      text-align: center;
+      white-space: break-spaces;
+      display: flex;
     }
 
     .timeline-point {
@@ -278,8 +326,10 @@
     .timeline-steps {
       display: flex;
       position: relative;
-      padding: 0px 16px;
+      padding: 0px 35px;
       overflow: auto;
+      height: 100px;
+      top: -30px;
       scrollbar-width: none;
       /* Firefox */
       -ms-overflow-style: none;
@@ -313,12 +363,7 @@
       border-radius: 50%;
     }
 
-    .play-button-large .bp4-icon {}
 
-
-    .action-button-section {
-      /* Adjust alignment or spacing if needed */
-    }
   }
 }
 

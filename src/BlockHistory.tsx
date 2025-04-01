@@ -5,6 +5,7 @@ import {
   Tooltip,
   Position,
   Button,
+  Popover,
 } from "@blueprintjs/core";
 import dayjs from "dayjs";
 import React, { useState, useEffect, useRef } from "react";
@@ -18,7 +19,7 @@ export function BlockHistory() {
   // 修改 timelinePoints 的实现方式
   const [snapshots, setSnapshots] = useState([]);
   const [activeSnapShotIndex, setActiveSnapshotIndex] = useState(0);
-  let uidRef = useRef("")
+  let uidRef = useRef("");
   useEffect(() => {
     const label = "History: Block Timeline";
     window.roamAlphaAPI.ui.blockContextMenu.addCommand({
@@ -96,17 +97,7 @@ export function BlockHistory() {
           className="timeline-container"
           style={{ position: "relative", marginTop: 20 }}
         >
-          <div
-            className="timeline-line"
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: 0,
-              right: 0,
-              height: "2px",
-              backgroundColor: "#E1E8ED",
-            }}
-          ></div>
+          <div className="timeline-line"></div>
           <div
             className="timeline-steps"
             style={{
@@ -121,8 +112,10 @@ export function BlockHistory() {
           >
             {snapshots.map((point, index) => {
               return (
-                <Tooltip
-                  content={`${dayjs(point.time).format("YYYY/MM/DD HH:mm")}`}
+                <div
+                  className={`timeline-step
+                ${index === activeSnapShotIndex ? "active" : ""}
+                `}
                 >
                   <div
                     className={`timeline-point ${
@@ -132,7 +125,10 @@ export function BlockHistory() {
                       setActiveSnapshotIndex(index);
                     }}
                   />
-                </Tooltip>
+                  <div className="timeline-text">
+                    {dayjs(point.time).format("YYYY/MM/DD HH:mm")}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -232,25 +228,49 @@ export function BlockHistory() {
 
           {/* Action Button */}
           <div className="action-button-section">
-            <Button
-              intent={"danger"} // Or use custom class for specific red
-              text="Restore"
-              loading={restoring}
-              onClick={async () => {
-                // 
-                setRestoring(true);
-                console.log({ activeSnapShot })
-                await window.roamAlphaAPI.updateBlock({
-                  block: {
-                    uid: uidRef.current,
-                    string: activeSnapShot.string,
-                  },
-                });
-                saveBlockSnapshot(uidRef.current, activeSnapShot.string)
-                setRestoring(false);
-                setOpen(false);
-              }}
-            />
+            <Popover
+              interactionKind="click"
+              position="bottom"
+              captureDismiss
+              modifiers={{}}
+              content={
+                <Card style={{}}>
+                  <h5>
+                    Are you sure you want to restore this version (
+                    {dayjs(activeSnapShot?.time).format("YYYY/MM/DD HH:mm")})?
+                  </h5>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: 12,
+                      marginTop: 16,
+                    }}
+                  >
+                    <Button className={Classes.POPOVER_DISMISS}>Cancel</Button>
+                    <Button
+                      className={Classes.POPOVER_DISMISS}
+                      onClick={() => {
+                        setRestoring(true);
+                        setTimeout(async () => {
+                          await saveBlockSnapshot(
+                            uidRef.current,
+                            activeSnapShot?.string
+                          );
+                          setRestoring(false);
+                          setOpen(false);
+                        }, 100);
+                      }}
+                      intent="danger"
+                    >
+                      Confirm
+                    </Button>
+                  </div>
+                </Card>
+              }
+            >
+              <Button intent={"danger"} text="Restore" loading={restoring} />
+            </Popover>
           </div>
         </div>
       </div>
