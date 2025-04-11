@@ -17,7 +17,7 @@ export let API: RoamExtensionAPI;
 export async function initConfig(extensionAPI: RoamExtensionAPI) {
   API = extensionAPI;
   API.settings.panel.create({
-    tabTitle: "Page History",
+    tabTitle: "Roam History",
     settings: [
       {
         id: CONSTANTS.PAGE_INTERVAL,
