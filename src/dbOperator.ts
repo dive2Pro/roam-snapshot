@@ -7,6 +7,7 @@ const dbPromise = openDB("rm-history", 2, {
       db.createObjectStore(CONSTANTS.DB_STORE);
     }
     db.createObjectStore(CONSTANTS.DB_BLOCK_STORE);
+    db.createObjectStore(CONSTANTS.DB_PAGE_DELETED);
   },
 });
 
@@ -58,3 +59,4 @@ class DBOperator {
 
 export const dbOperator = new DBOperator();
 export const blockDBOperator = new DBOperator(CONSTANTS.DB_BLOCK_STORE);
+export const dbPageDeletedOpetator = new DBOperator(CONSTANTS.DB_PAGE_DELETED);

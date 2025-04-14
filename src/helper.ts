@@ -38,3 +38,22 @@ export const keys = <T extends {}>(obj: T) => {
 export function deepClone(v: {}) {
   return JSON.parse(JSON.stringify(v))
 }
+
+export const getFullPageJson = (uid: string) => {
+  return window.roamAlphaAPI.data.q(
+    `[:find (pull ?b [
+      :block/string 
+      :node/title 
+      :block/uid 
+      :block/order 
+      :block/heading 
+      :block/open 
+      :children/view-type
+      :block/text-align
+      :edit/time 
+      :block/props
+      :block/parents
+      {:block/children ...}
+    ]) . :where [?b :block/uid "${uid}"]]`
+  ) as unknown as Snapshot;
+};

@@ -22,7 +22,7 @@ import {
   savePageSnapshot,
   sortByOrder,
 } from "./config";
-import { keys } from "./helper";
+import { getFullPageJson, keys } from "./helper";
 import { extension_helper, minute_1 } from "./helper";
 import Dayjs from "dayjs";
 import calendar from "dayjs/plugin/calendar";
@@ -686,24 +686,6 @@ const isExceed = (time: number) => {
   return now >= time;
 };
 
-const getFullPageJson = (uid: string) => {
-  return window.roamAlphaAPI.data.q(
-    `[:find (pull ?b [
-      :block/string 
-      :node/title 
-      :block/uid 
-      :block/order 
-      :block/heading 
-      :block/open 
-      :children/view-type
-      :block/text-align
-      :edit/time 
-      :block/props
-      :block/parents
-      {:block/children ...}
-    ]) . :where [?b :block/uid "${uid}"]]`
-  ) as unknown as Snapshot;
-};
 
 const recordPage = async (item: { uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
