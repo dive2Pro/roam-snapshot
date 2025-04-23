@@ -86,7 +86,7 @@ class DBOperator {
   // 从备份数据恢复
   async importData(backupData: {
     storeName: string;
-    data: Array<{ key: string; value: any }>;
+    data: Array<{ key: IDBValidKey; value: any }>;
   }) {
     // 验证数据是否匹配当前存储
     if (backupData.storeName !== this.dbName) {
@@ -123,12 +123,14 @@ export const dbCache = {
     ]);
   },
 
-  importAllData(data: Record<string, Array<{ key: string; value: any }>>) {
+  importAllData(
+    data: { storeName: string; data: { key: IDBValidKey; value: any }[] }[]
+  ) {
     return Promise.all([
-      Object.keys(data).map((key) => {
+      data.map((item) => {
         return dbOperator.importData({
-          storeName: key,
-          data: data[key],
+          storeName: item.storeName,
+          data: item.data,
         });
       }),
     ]);

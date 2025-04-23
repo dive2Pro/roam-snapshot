@@ -34,9 +34,7 @@ export function checkItsTimeToBackup() {
     .then(() => {
       utils.updateLastestBackupTime(Date.now());
     })
-    .finally(() => {
-     
-    });
+    .finally(() => {});
 }
 
 async function backup() {
@@ -46,31 +44,114 @@ async function backup() {
   isBackup = true;
   emitBackupStartEvent();
   const oldUrl = extensionAPI.settings.get(CONSTANTS.SYNC_BACKUP_FILE_URL);
-  return dbCache.exportAllData().then(async (data) => {
-    console.log(data, " = export all data");
-    const url = await (
-      window.roamAlphaAPI as unknown as RoamExtensionAPI
-    ).file.upload({
-      file: new File([JSON.stringify(data)], `roam-history.json`, {
-        type: "application/json",
-      }),
-      toast: { hide: true },
-    });
-    console.log({
-      url,
-      oldUrl,
-    });
-    extensionAPI.settings.set(CONSTANTS.SYNC_BACKUP_FILE_URL, url);
-    if (oldUrl && url) {
-      await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete({
+  // 合并新旧数据
+  async function mergeData(
+    localData: {
+      storeName: string;
+      data: {
+        key: IDBValidKey;
+        value: {
+          time: number;
+        }[];
+      }[];
+    }[]
+  ) {
+    if (oldUrl) {
+      const oldData = await (
+        window.roamAlphaAPI as unknown as RoamExtensionAPI
+      ).file.get({
         url: oldUrl,
       });
-      console.log(`deleted: ${oldUrl}`);
+      if (!oldData) {
+        return localData;
+      }
+
+      try {
+        const oldDataJson = JSON.parse(await oldData.text()) as {
+          storeName: string;
+          data: {
+            key: IDBValidKey;
+            value: {
+              time: number;
+            }[];
+          }[];
+        }[];
+
+        const result = [];
+        for (const oldData of oldDataJson) {
+          const mergedMap = new Map<string, { time: number }[]>();
+          const newData = localData.find(
+            (item) => item.storeName === oldData.storeName
+          );
+          oldData.data.forEach((oldItem) => {
+            mergedMap.set(oldItem.key as string, oldItem.value);
+          });
+          newData.data.forEach((newItem) => {
+            const timeSet = new Set<number>();
+            if (!mergedMap.has(newItem.key as string)) {
+              mergedMap.set(newItem.key as string, newItem.value);
+            } else {
+              const oldItemData = mergedMap.get(newItem.key as string);
+              oldItemData.forEach((item) => {
+                timeSet.add(item.time);
+              });
+              newItem.value.forEach((item) => {
+                if (!timeSet.has(item.time)) {
+                  oldItemData.push(item);
+                }
+              });
+              mergedMap.set(newItem.key as string, oldItemData);
+            }
+          });
+          result.push({
+            storeName: oldData.storeName,
+            data: Array.from(mergedMap.entries()).map(([key, value]) => {
+              return {
+                key,
+                value,
+              };
+            }),
+          });
+        }
+        return result
+      } catch (e) {
+        console.error(e);
+      }
     }
-  }).finally(() => {
-     isBackup = false;
-     emitBackupFinishEvent();
-  });
+
+    return localData;
+  }
+  return dbCache
+    .exportAllData()
+    .then(async (localData) => {
+      console.log(localData, " = export all data");
+      let data = await mergeData(localData);
+      dbCache.importAllData(data);
+
+      const url = await (
+        window.roamAlphaAPI as unknown as RoamExtensionAPI
+      ).file.upload({
+        file: new File([JSON.stringify(data)], `roam-history.json`, {
+          type: "application/json",
+        }),
+        toast: { hide: true },
+      });
+      console.log({
+        url,
+        oldUrl,
+      });
+      extensionAPI.settings.set(CONSTANTS.SYNC_BACKUP_FILE_URL, url);
+      if (oldUrl && url) {
+        await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete({
+          url: oldUrl,
+        });
+        console.log(`deleted: ${oldUrl}`);
+      }
+    })
+    .finally(() => {
+      isBackup = false;
+      emitBackupFinishEvent();
+    });
 }
 
 const utils = {
@@ -98,10 +179,6 @@ const utils = {
 
 export function createSync(_extensionAPI: RoamExtensionAPI) {
   extensionAPI = _extensionAPI;
-
-  const backupInterval =
-    (extensionAPI.settings.get(CONSTANTS.SYNC_INTERVAL) as number) || 0;
-
   return function Sync() {
     const [syncInterval, setSyncInterval] = useState(() =>
       utils.getBackupInterval()
@@ -141,7 +218,7 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
       isBackup,
     });
     return (
-      <Card
+      <div
         style={{
           width: "100%",
         }}
@@ -203,7 +280,6 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
                   Backup Now
                 </Button>
               </div>
-              <div></div>
             </>
           )}
           <div>
@@ -212,7 +288,7 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     );
   };
 }
