@@ -113,7 +113,7 @@ async function backup() {
             }),
           });
         }
-        return result
+        return result;
       } catch (e) {
         console.error(e);
       }
@@ -277,16 +277,11 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
                     backup();
                   }}
                 >
-                  Backup Now
+                  Merge Data with Remote Now
                 </Button>
               </div>
             </>
           )}
-          <div>
-            <Button disabled={!isSyncEnabled} icon="arrow-down">
-              Import Data
-            </Button>
-          </div>
         </div>
       </div>
     );
