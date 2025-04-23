@@ -197,8 +197,8 @@
 
     .timeline-step {
       position: relative;
-
-      &:first-child:after {
+      
+      &:not(.single):first-child:after {
         content: " ";
         position: absolute;
         height: 2px;
@@ -218,7 +218,7 @@
         }
       }
 
-      &:last-child:after {
+      &:not(.single):last-child:after {
         content: " ";
         position: absolute;
         height: 2px;
@@ -377,4 +377,10 @@
 .bp3-menu-item.trash {
   padding: 4px;
   margin-bottom: -10px;
+}
+
+.flex-menu-item {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }

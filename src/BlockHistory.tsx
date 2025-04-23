@@ -118,6 +118,7 @@ export function BlockHistory() {
               return (
                 <div
                   className={`timeline-step
+                    ${snapshots.length === 1 ? "single" : ""}
                 ${index === activeSnapShotIndex ? "active" : ""}
                 `}
                 >
@@ -273,7 +274,7 @@ export function BlockHistory() {
                               [?page :block/uid ?page-uid]
                             ]
                             `);
-                          console.log({ pageUid })
+                          console.log({ pageUid });
                           emitBlockChangeEvent(pageUid as unknown as string);
                           await saveBlockSnapshot(
                             uidRef.current,

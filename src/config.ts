@@ -4,6 +4,7 @@ import { getKey } from "./CONSTANTS";
 import { deepClone, keys } from "./helper";
 import { cache } from "./cache";
 import * as jsondiffpatch from "jsondiffpatch";
+import { createSync } from "./comps/sync";
 
 export function hasUpgrade(v = 1) {
   return API.settings.get(CONSTANTS.VERSION) === v;
@@ -35,6 +36,15 @@ export async function initConfig(extensionAPI: RoamExtensionAPI) {
         action: {
           type: "input",
           placeholder: "5",
+        },
+      },
+      {
+        id: CONSTANTS.SYNC,
+        name: "",
+        description: "",
+        action: {
+          type: "reactComponent",
+          component: createSync(extensionAPI),
         },
       },
     ],

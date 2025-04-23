@@ -1,0 +1,218 @@
+import {
+  Button,
+  Card,
+  Menu,
+  MenuDivider,
+  MenuItem,
+  Popover,
+  Switch,
+} from "@blueprintjs/core";
+import { useEffect, useState } from "react";
+import { CONSTANTS } from "../CONSTANTS";
+import { dbCache } from "../dbOperator";
+import {
+  emitBackupFinishEvent,
+  emitBackupStartEvent,
+  onBackupFinishEvent,
+  onBackupStartEvent,
+} from "../event";
+
+const INTERVAL_WEEK = 1000 * 3600 * 24 * 7;
+const INTERVAL_DAY = 1000 * 3600 * 24;
+const INTERVAL_HOUR = 1000 * 3600;
+let isBackup = false;
+let extensionAPI: RoamExtensionAPI;
+export function checkItsTimeToBackup() {
+  if (utils.getLastestBackupTime() <= 0) {
+    return;
+  }
+  if (Date.now() < utils.getLastestBackupTime()) {
+    return;
+  }
+
+  backup()
+    .then(() => {
+      utils.updateLastestBackupTime(Date.now());
+    })
+    .finally(() => {
+     
+    });
+}
+
+async function backup() {
+  if (isBackup) {
+    throw new Error("is backuping");
+  }
+  isBackup = true;
+  emitBackupStartEvent();
+  const oldUrl = extensionAPI.settings.get(CONSTANTS.SYNC_BACKUP_FILE_URL);
+  return dbCache.exportAllData().then(async (data) => {
+    console.log(data, " = export all data");
+    const url = await (
+      window.roamAlphaAPI as unknown as RoamExtensionAPI
+    ).file.upload({
+      file: new File([JSON.stringify(data)], `roam-history.json`, {
+        type: "application/json",
+      }),
+      toast: { hide: true },
+    });
+    console.log({
+      url,
+      oldUrl,
+    });
+    extensionAPI.settings.set(CONSTANTS.SYNC_BACKUP_FILE_URL, url);
+    if (oldUrl && url) {
+      await (window.roamAlphaAPI as unknown as RoamExtensionAPI).file.delete({
+        url: oldUrl,
+      });
+      console.log(`deleted: ${oldUrl}`);
+    }
+  }).finally(() => {
+     isBackup = false;
+     emitBackupFinishEvent();
+  });
+}
+
+const utils = {
+  updateLastestBackupTime: (time: number) => {
+    extensionAPI.settings.set(CONSTANTS.SYNC_LASTEST_TIME, time);
+  },
+  getBackupInterval: () => {
+    return (extensionAPI.settings.get(CONSTANTS.SYNC_INTERVAL) as number) || 0;
+  },
+  getLastestBackupTime: () => {
+    const interval =
+      (extensionAPI.settings.get(CONSTANTS.SYNC_INTERVAL) as number) || 0;
+    if (interval <= 0) {
+      return -1;
+    }
+    const lastestBackupTime =
+      (extensionAPI.settings.get(CONSTANTS.SYNC_LASTEST_TIME) as number) || 0;
+    if (!lastestBackupTime) {
+      return Date.now() + interval;
+    } else {
+      return lastestBackupTime + interval;
+    }
+  },
+};
+
+export function createSync(_extensionAPI: RoamExtensionAPI) {
+  extensionAPI = _extensionAPI;
+
+  const backupInterval =
+    (extensionAPI.settings.get(CONSTANTS.SYNC_INTERVAL) as number) || 0;
+
+  return function Sync() {
+    const [syncInterval, setSyncInterval] = useState(() =>
+      utils.getBackupInterval()
+    );
+    const [isBackup, setIsBackup] = useState(false);
+    const updateInterval = (interval: number) => {
+      setSyncInterval(interval);
+      extensionAPI.settings.set(CONSTANTS.SYNC_INTERVAL, interval);
+    };
+    useEffect(() => {
+      const offStartEvent = onBackupStartEvent(() => {
+        setIsBackup(true);
+      });
+      const offFinishEvent = onBackupFinishEvent(() => {
+        setIsBackup(false);
+      });
+      return () => {
+        offStartEvent();
+        offFinishEvent();
+      };
+    }, []);
+    const isSyncEnabled = utils.getBackupInterval() > 0;
+    const label = (() => {
+      if (syncInterval === INTERVAL_WEEK) {
+        return "create a backup every week";
+      }
+      if (syncInterval === INTERVAL_DAY) {
+        return "create a backup every day";
+      }
+      if (syncInterval === INTERVAL_HOUR) {
+        return "create a backup every hour";
+      }
+      return "Disabled";
+    })();
+
+    console.log({
+      isBackup,
+    });
+    return (
+      <Card
+        style={{
+          width: "100%",
+        }}
+      >
+        <MenuDivider />
+        <div className="flex-column gap-2">
+          <h3>
+            <strong>Auto Backup</strong>
+          </h3>
+          <div className="flex-menu-item">
+            <Popover
+              position="bottom"
+              content={
+                <Menu>
+                  <MenuItem
+                    onClick={() => {
+                      updateInterval(0);
+                    }}
+                    text="Disabled"
+                  ></MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      updateInterval(INTERVAL_WEEK);
+                    }}
+                    text="create a backup every week"
+                  ></MenuItem>
+
+                  <MenuItem
+                    onClick={() => {
+                      updateInterval(INTERVAL_DAY);
+                    }}
+                    text="create a backup every day"
+                  ></MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      updateInterval(INTERVAL_HOUR);
+                    }}
+                    text="create a backup every hour"
+                  ></MenuItem>
+                </Menu>
+              }
+            >
+              <Button icon="time" rightIcon="caret-down">
+                {label}
+              </Button>
+            </Popover>
+          </div>
+          {isSyncEnabled && (
+            <>
+              <div>
+                <Button
+                  disabled={!isSyncEnabled}
+                  icon="saved"
+                  loading={isBackup}
+                  onClick={() => {
+                    backup();
+                  }}
+                >
+                  Backup Now
+                </Button>
+              </div>
+              <div></div>
+            </>
+          )}
+          <div>
+            <Button disabled={!isSyncEnabled} icon="arrow-down">
+              Import Data
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+}
