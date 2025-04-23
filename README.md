@@ -71,6 +71,11 @@ https://github.com/user-attachments/assets/3e4311bc-e6a9-41fc-bd95-3d4d2ee0915b
 
 Restoring a block version is equivalent to editing that block, and this edit record will also appear in your page's edit history, ensuring effective secondary protection of your information and data.
 
+---
+
+![image](https://github.com/user-attachments/assets/8c19b6bf-4a1c-4b3f-94ad-489004cebd43)
+
+
 ## Configure Snapshot Intervals
 - Open Roam plugin settings
 - Click the `History` tab
@@ -86,8 +91,7 @@ The `Auto Sync` feature automatically merges your local page and block history d
     - Find the "Auto Sync" section.
     - Use the dropdown menu to select your preferred sync frequency: "Sync with server every hour", "Sync with server every day", "Sync with server every week", or "Disabled".
     - If Auto Sync is enabled, you can click the "Sync Now" button to trigger an immediate synchronization.
-
-<img width="500" alt="Auto Sync Settings" src="https://user-images.githubusercontent.com/23192045/your-image-url-here.png"> <!-- 请替换为实际的截图 URL -->
+ 
 
 
 ## Changelog
