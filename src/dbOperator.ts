@@ -58,11 +58,9 @@ class DBOperator {
     try {
       const tx = db.transaction(this.dbName, "readonly");
       const store = tx.objectStore(this.dbName);
-      console.log("DBOperator: exportData: ", this.dbName);
       // 获取所有键值对
       const keys = await store.getAllKeys();
       const values = await store.getAll();
-      console.log("DBOperator: exportData: ", store, keys, values);
 
       // 构建导出数据
       const exportData = {

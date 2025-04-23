@@ -65,6 +65,7 @@ async function backup() {
       if (!oldData) {
         return localData;
       }
+      console.time("merge");
 
       try {
         const oldDataJson = JSON.parse(await oldData.text()) as {
@@ -91,7 +92,10 @@ async function backup() {
             if (!mergedMap.has(newItem.key as string)) {
               mergedMap.set(newItem.key as string, newItem.value);
             } else {
-              const oldItemData = mergedMap.get(newItem.key as string);
+              const oldItemData = mergedMap.get(newItem.key as string) || [];
+              if (!Array.isArray(oldItemData)) {
+                return;
+              }
               oldItemData.forEach((item) => {
                 timeSet.add(item.time);
               });
@@ -121,11 +125,13 @@ async function backup() {
 
     return localData;
   }
+  console.time("backup");
   return dbCache
     .exportAllData()
     .then(async (localData) => {
       console.log(localData, " = export all data");
       let data = await mergeData(localData);
+      console.timeEnd("merge");
       dbCache.importAllData(data);
 
       const url = await (
@@ -151,6 +157,7 @@ async function backup() {
     .finally(() => {
       isBackup = false;
       emitBackupFinishEvent();
+      console.timeEnd("backup");
     });
 }
 
@@ -200,7 +207,7 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
         offFinishEvent();
       };
     }, []);
-    const isSyncEnabled = utils.getBackupInterval() > 0;
+    const isSyncEnabled = syncInterval > 0;
     const label = (() => {
       if (syncInterval === INTERVAL_WEEK) {
         return "Sync with server every week"; // 修改描述

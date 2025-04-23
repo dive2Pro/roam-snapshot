@@ -77,14 +77,26 @@ Restoring a block version is equivalent to editing that block, and this edit rec
 - Set custom snapshot intervals for both pages and blocks (in minutes)
 - Default intervals: 10 minutes for pages, 5 minutes for blocks
 
+## Auto Sync
+The `Auto Sync` feature automatically merges your local page and block history data (stored in IndexedDB) with the backup file stored on the Roam server. This helps keep your history data consistent and provides an extra layer of backup.
+
+- **How it works:** At configured intervals (hourly, daily, or weekly), the plugin fetches the latest backup from the Roam server, merges it with your local data , and uploads the merged data back to the server, replacing the old backup file.
+- **Configuration:**
+    - Go to the plugin settings page.
+    - Find the "Auto Sync" section.
+    - Use the dropdown menu to select your preferred sync frequency: "Sync with server every hour", "Sync with server every day", "Sync with server every week", or "Disabled".
+    - If Auto Sync is enabled, you can click the "Sync Now" button to trigger an immediate synchronization.
+
+<img width="500" alt="Auto Sync Settings" src="https://user-images.githubusercontent.com/23192045/your-image-url-here.png"> <!-- 请替换为实际的截图 URL -->
+
 
 ## Changelog
 
 ### v3
 
 - Rename to Roam History
-- Remove sync data feature. All data is now saved locally
 - Add block timeline feature
+- 
 
 ### v2
 
