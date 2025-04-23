@@ -31,6 +31,7 @@ import "./style.less";
 import { diff } from "./diff-string";
 import { DiffString } from "./comps/DiffString";
 import { onBlockChangeEvent } from "./event";
+import { checkItsTimeToBackup } from "./comps/sync";
 
 const getPageUidByPageTitle = (pageTitle: string) =>
   window.roamAlphaAPI.q(
@@ -818,6 +819,7 @@ let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
   const id = setInterval(() => {
+    checkItsTimeToBackup()
     SNAP_SHOT_MAP.forEach((item, key) => {
       if (isExceed(item.end)) {
         recordPage(item);

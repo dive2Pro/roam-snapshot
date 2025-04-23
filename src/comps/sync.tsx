@@ -203,13 +203,13 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
     const isSyncEnabled = utils.getBackupInterval() > 0;
     const label = (() => {
       if (syncInterval === INTERVAL_WEEK) {
-        return "create a backup every week";
+        return "Sync with server every week"; // 修改描述
       }
       if (syncInterval === INTERVAL_DAY) {
-        return "create a backup every day";
+        return "Sync with server every day"; // 修改描述
       }
       if (syncInterval === INTERVAL_HOUR) {
-        return "create a backup every hour";
+        return "Sync with server every hour"; // 修改描述
       }
       return "Disabled";
     })();
@@ -226,7 +226,7 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
         <MenuDivider />
         <div className="flex-column gap-2">
           <h3>
-            <strong>Auto Backup</strong>
+            <strong>Auto Sync</strong> {/* 修改标题 */}
           </h3>
           <div className="flex-menu-item">
             <Popover
@@ -243,20 +243,20 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
                     onClick={() => {
                       updateInterval(INTERVAL_WEEK);
                     }}
-                    text="create a backup every week"
+                    text="Sync with server every week" // 修改描述
                   ></MenuItem>
 
                   <MenuItem
                     onClick={() => {
                       updateInterval(INTERVAL_DAY);
                     }}
-                    text="create a backup every day"
+                    text="Sync with server every day" // 修改描述
                   ></MenuItem>
                   <MenuItem
                     onClick={() => {
                       updateInterval(INTERVAL_HOUR);
                     }}
-                    text="create a backup every hour"
+                    text="Sync with server every hour" // 修改描述
                   ></MenuItem>
                 </Menu>
               }
@@ -271,13 +271,13 @@ export function createSync(_extensionAPI: RoamExtensionAPI) {
               <div>
                 <Button
                   disabled={!isSyncEnabled}
-                  icon="saved"
+                  icon="refresh" // 修改图标为 sync/refresh 更合适
                   loading={isBackup}
                   onClick={() => {
                     backup();
                   }}
                 >
-                  Merge Data with Remote Now
+                  Sync Now {/* 修改按钮文本 */}
                 </Button>
               </div>
             </>
