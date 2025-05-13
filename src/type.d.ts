@@ -42,7 +42,7 @@ type ITEM = {
   json?: Snapshot,
   time: number
   diff?: any
-  title: string
+  title?: string
 }
 
 type Block_SNAP = {

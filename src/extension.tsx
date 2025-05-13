@@ -16,7 +16,7 @@ import {
   diffSnapshots,
   getBlockIntervalTime,
   getIntervalTime,
-  getPageSnapshotWithDiff,
+  getPageSnapshot,
   hasRecordInCache,
   saveBlockSnapshot,
   savePageSnapshot,
@@ -90,7 +90,7 @@ function Block(props: {
   const diffViewType = changed?.["view-type"];
   const diffTextAlign = changed?.["text-align"];
   const diffHeading = changed?.heading;
-  // console.log(props.data.order, " ---", props.data, diffOpen);
+  console.log(props.data.order, " changed---", { props }, changed);
 
   const [state, setState] = useState({
     ...props.data,
@@ -121,6 +121,12 @@ function Block(props: {
       props.data.children || [],
       props.data
     );
+    console.log(
+      mappedChildren,
+      " = mappedChildren",
+      props.data.children,
+      props.data
+    )
     return mappedChildren.map((child, index) => {
       return (
         <Block
@@ -170,7 +176,7 @@ function Block(props: {
   }
   return (
     <div
-      className={`roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
+      className={`rm-snapshot-block roam-block-container rm-block rm-block--mine  rm-block--open rm-not-focused block-bullet-view ${
         props.data.heading ? `rm-heading-level-${props.data.heading}` : ""
       } ${props.data.added ? CONSTANTS.css.diff.block.add : ""} ${
         props.data.deleted ? CONSTANTS.css.diff.block.del : ""
@@ -307,7 +313,7 @@ function PagePreview(props: {
       doAction();
     }
   }, [props.data, props.index]);
-  // console.log(state, " --- state");
+  console.log({ state, props }, " --- state",);
   return (
     <div className="rm-snapshot-view">
       {loading ? (
@@ -410,10 +416,11 @@ const getChildBlocks = (
       })
       .forEach((delBlock) => {
         sorted.splice(delBlock.order, 0, delBlock);
-        // log(delBlock, " del block", sorted);
+        log(delBlock, " del block", sorted);
       });
   }
   // log(sorted, diff, " ------- diff");
+  console.log(nowChildren, " = nowChildren", sorted);
 
   return sorted;
 };
@@ -504,9 +511,10 @@ export default function Extension(props: { onChange: (b: boolean) => void }) {
     const pageUid = await getCurrentPageFromApi();
     pageUidRef.current = pageUid;
     setLoading(true);
-    const snapList = (await getPageSnapshotWithDiff(pageUid)).sort(
+    const snapList = (await getPageSnapshot(pageUid)).sort(
       (a, b) => b.time - a.time
     );
+    console.log(snapList, " snapList");
     setList(snapList);
     setLoading(false);
     group(snapList);
@@ -687,7 +695,6 @@ const isExceed = (time: number) => {
   return now >= time;
 };
 
-
 const recordPage = async (item: { uid: string }) => {
   // 先删除记录, 避免在记录页面快照时, 又有修改记录进来被误删.
   const json = getFullPageJson(item.uid);
@@ -819,7 +826,7 @@ let isRestoring = false;
 const startLoop = () => {
   // 每 60 秒检查一下是否有页面需要快照.
   const id = setInterval(() => {
-    checkItsTimeToBackup()
+    checkItsTimeToBackup();
     SNAP_SHOT_MAP.forEach((item, key) => {
       if (isExceed(item.end)) {
         recordPage(item);
@@ -841,12 +848,16 @@ const startLoop = () => {
 
 const newRecordSet = new Set<string>();
 const triggerSnapshotRecordByPageUid = async (uid: string) => {
-  if (!SNAP_SHOT_MAP.has(uid))
+  console.log("triggerSnapshotRecordByPageUid", uid, SNAP_SHOT_MAP.has(uid));
+
+  if (!SNAP_SHOT_MAP.has(uid)) {
     SNAP_SHOT_MAP.set(uid, {
       start: Date.now(),
       end: Date.now() + getIntervalTime() * minute_1,
       uid,
     });
+  }
+
   // console.log(await hasRecordInCache(uid), "---", uid);
   // 检查页面是否已有记录, 如果没有就先将当前的页面数据写入
   if (!(await hasRecordInCache(uid)) && !newRecordSet.has(uid)) {
@@ -861,8 +872,6 @@ const triggerSnapshotRecordByBlockUid = async (
   uid: string,
   content: string
 ) => {
-  
-
   if (!SNAP_SHOT_BLOCK_MAP.has(uid))
     SNAP_SHOT_BLOCK_MAP.set(uid, {
       start: Date.now(),
@@ -880,6 +889,7 @@ const triggerSnapshotRecordByBlockUid = async (
 const getPageUidFromDom = async (el: HTMLElement) => {
   const targetEl = el.closest("[data-page-title]");
   const titleFromBlock = targetEl?.getAttribute("data-page-title");
+  console.log({ targetEl, el })
   if (titleFromBlock) {
     const uid = getPageUidByPageTitle(titleFromBlock);
     return uid;
@@ -909,7 +919,7 @@ const mutationTrigger = async (mutation: MutationRecord) => {
     triggerSnapshotRecordByPageUid(uid);
   }
   const blockUid = await getBlockUidFromDom(mutation.target as HTMLElement);
-  console.log(mutation.target, " --- ", uid, blockUid);
+  console.log(mutation.target, uid, " --- ", uid, blockUid);
 
   if (blockUid) {
     triggerSnapshotRecordByBlockUid(
@@ -972,12 +982,12 @@ function checkCodeBlocks(mutation: MutationRecord) {
 }
 
 function listenToChange() {
-  const off = onBlockChangeEvent((evt: { detail:  string  }) => {
+  const off = onBlockChangeEvent((evt: { detail: string }) => {
     triggerSnapshotRecordByPageUid(evt.detail);
   });
   extension_helper.on_uninstall(() => {
-    off()
-  })
+    off();
+  });
   const targetNode = document.querySelector(".roam-app");
   const config = { childList: true, subtree: true, attributes: true };
   const observer = new MutationObserver((mutationList, observer) => {

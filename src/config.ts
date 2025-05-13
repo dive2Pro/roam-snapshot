@@ -206,7 +206,7 @@ export async function saveBlockSnapshot(blockUid: string, content: string) {
     },
     ...oldblockCache,
   ];
-  console.log("newCache = ", blockUid ,newCache)
+  console.log("newCache = ", blockUid, newCache);
   cache.addBlock(blockUid, newCache);
 }
 export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
@@ -220,19 +220,11 @@ export async function savePageSnapshot(pageUid: string, snapshot: Snapshot) {
     .filter((a) => !a.diff || Object.keys(a.diff || {}).length !== 0);
   console.log(`sorted`, sorted);
   // 插入到前面
-  if (sorted.length) {
-    const jsonDiff = jsondiffpatch
-      .create()
-      .diff(latestSnapshot(sorted), snapshot);
-    if (jsonDiff) {
-      sorted.unshift({
-        time: Date.now(),
-        diff: jsonDiff,
-        title: snapshot.title,
-      });
-    } else {
-      return;
-    }
+  if (sorted.length && hasDifference(sorted[0].json, snapshot)) {
+    sorted.unshift({
+      json: snapshot,
+      time: Date.now(),
+    });
   } else {
     // 新入
     sorted.unshift({
@@ -304,7 +296,6 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       deleted: [],
       changed: {},
     };
-
     const nowChildrenMap = (now.children || []).reduce((p, c) => {
       p[c.uid] = c;
       return p;
@@ -327,6 +318,8 @@ export const diffSnapshots = (diff: Diff, now: Snapshot, old: Snapshot) => {
       } else {
       }
     });
+    console.log("DIFF - children: ", { diff });
+
     keys(nowChildrenMap).forEach((key) => {
       diff.block.added.push({
         parentUids: [now.uid],
@@ -379,6 +372,8 @@ function diffSnapshotBlock(
           now: now[key],
         };
       }
+      diff.block.changed[old.uid] = diffBlock;
+      console.log("DIFF - block: ", { key, diffBlock, diff });
     }
   });
   const nowChildrenMap = (now.children || []).reduce((p, c) => {
@@ -391,6 +386,11 @@ function diffSnapshotBlock(
     return p;
   }, {} as Record<string, SnapshotBlock>);
   // TODO: 不以 order 上是否相等为判断新增更新的标准.因为这样会让 只是 order 变化的 block 也被识别为 added 和 deleted
+  // console.log(
+  //   "DIFF - children: ",
+  //   JSON.parse(JSON.stringify({ nowChildrenMap, oldChildrenMap, now, old }))
+  // );
+
   keys(nowChildrenMap).forEach((key) => {
     if (oldChildrenMap[key]) {
       diffSnapshotBlock(
